@@ -8,5 +8,5 @@ Investigate the Intrinsic Dimensionality of the dynamical system, using the Levi
 
 ## To-Do
 1. add a config YAML file
-2. resize the images (currently they are 500x500)
-3. implement the Lavina-Bickel algorithm 
+2. implement the Lavina-Bickel algorithm 
+3. adapt the code to different sizes of the images (or keep the size constant but decrease the quality in some other ways)
