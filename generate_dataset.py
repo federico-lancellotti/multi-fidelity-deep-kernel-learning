@@ -3,6 +3,7 @@ import os
 import gymnasium as gym
 
 from logger import Logger
+from utils import stack_frames
 
 # Gymnasium is using np.bool8, which is deprecated.
 from warnings import filterwarnings
@@ -16,8 +17,8 @@ if test:
     data_file_name = 'pendulum_test.pkl'
 else:
     data_file_name = 'pendulum_train.pkl'
-obs_dim1 = 84
-obs_dim2 = 84
+frame_dim1 = 84
+frame_dim2 = 84
 num_episodes = 5
 seed = 2
 random_policy = True
@@ -45,9 +46,15 @@ logger.obslog(frame) # log the frame
 
 action = np.array([0.0]) # null action
 for step_index in range(max_step - 1): 
-	observation, reward, terminated, truncated, info = env.step(action)
-	frame = np.array(env.render())
-	logger.obslog(frame)
+    prev_frame = frame
+
+    # Render new frame
+    observation, reward, terminated, truncated, info = env.step(action)
+    frame = np.array(env.render())
+
+    # Stack and log two consecutive frames
+    stacked_frames = stack_frames(prev_frame=prev_frame, frame=frame, size1=frame_dim1, size2=frame_dim2)
+    logger.obslog(stacked_frames)
 
 # Save the dataset
 logger.save_obslog(filename=data_file_name)
