@@ -81,7 +81,7 @@ def main(exp='Pendulum', mtype='DKL', noise_level=0.0, training_dataset='pendulu
 
     likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(latent_dim, rank=0, has_task_noise=True, has_global_noise=False)
 
-    model = SVDKL_AE(num_dim=latent_dim, likelihood=likelihood, grid_bounds=(-10.0, 10.0), hidden_dim=h_dim, grid_size=grid_size)
+    model = SVDKL_AE(num_dim=latent_dim, likelihood=likelihood, grid_bounds=(-10., 10.), hidden_dim=h_dim, grid_size=grid_size)
 
     if torch.cuda.is_available():
         model = model.cuda()
@@ -91,3 +91,18 @@ def main(exp='Pendulum', mtype='DKL', noise_level=0.0, training_dataset='pendulu
     elif torch.backends.mps.is_available(): # on Apple Silicon
         mps_device = torch.device("mps")
         model.to(mps_device)
+
+    # print(model)
+    
+    # Use the adam optimizer
+    optimizer = torch.optim.Adam([
+        {'params': model.SVDKL_AE.encoder.parameters()},
+        {'params': model.SVDKL_AE.decoder.parameters()},
+        {'params': model.SVDKL_AE.gp_layer.hyperparameters(), 'lr': lr_gp},
+        ], lr=lr, weight_decay=reg_coef)
+    
+    
+
+
+if __name__ == "__main__":
+    main()
