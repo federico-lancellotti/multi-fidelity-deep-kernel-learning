@@ -7,7 +7,9 @@ import gc
 from models import SVDKL_AE
 from logger import Logger
 from utils import load_pickle
+from trainer import train
 
+from datetime import datetime
 
 # for 84x84 inputs
 OUT_DIM = {2: 39, 4: 35, 6: 31}
@@ -85,23 +87,39 @@ def main(exp='Pendulum', mtype='DKL', noise_level=0.0, training_dataset='pendulu
 
     if torch.cuda.is_available():
         model = model.cuda()
-        variational_kl_term = variational_kl_term.cuda()
-        variational_kl_term_fwd = variational_kl_term_fwd.cuda()
         gc.collect()    # NOTE: Critical to avoid GPU leak
     elif torch.backends.mps.is_available(): # on Apple Silicon
         mps_device = torch.device("mps")
         model.to(mps_device)
-
-    # print(model)
     
     # Use the adam optimizer
     optimizer = torch.optim.Adam([
-        {'params': model.SVDKL_AE.encoder.parameters()},
-        {'params': model.SVDKL_AE.decoder.parameters()},
-        {'params': model.SVDKL_AE.gp_layer.hyperparameters(), 'lr': lr_gp},
+        {'params': model.encoder.parameters()},
+        {'params': model.decoder.parameters()},
+        {'params': model.gp_layer.hyperparameters(), 'lr': lr_gp},
         ], lr=lr, weight_decay=reg_coef)
     
-    
+    # Set how to save the model
+    now = datetime.now()
+    date_string = now.strftime("%d-%m-%Y_%Hh-%Mm-%Ss")
+    save_pth_dir = directory + '/Results/' + str(exp) + '/' + str(mtype) + '/Noise_level_' + str(noise_level)
+    if not os.path.exists(save_pth_dir):
+        os.makedirs(save_pth_dir)
+
+    # Training
+    if training:
+        print("start training...")
+        for epoch in range(1, max_epoch):
+            with gpytorch.settings.cholesky_jitter(jitter):
+                train(model=model, train_data=data, optimizer=optimizer, batch_size=batch_size, num_epochs=epoch)
+
+            if epoch % log_interval == 0:
+                torch.save({'model': model.state_dict(), 'likelihood': model.likelihood.state_dict()}, 
+                           save_pth_dir +'/DKL_Model_' + date_string+'.pth')
+
+        torch.save({'model': model.state_dict(), 'likelihood': model.likelihood.state_dict()}, 
+                   save_pth_dir + '/DKL_Model_' + date_string + '.pth')
+
 
 
 if __name__ == "__main__":
