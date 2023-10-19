@@ -112,7 +112,7 @@ class SVDKL_AE(gpytorch.Module):
         self.grid_bounds = grid_bounds
         self.likelihood = likelihood
 
-        self.gp_layer = GaussianProcessLayer(num_dim, grid_bounds, grid_size)
+        self.gp_layer = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
         self.encoder = Encoder(hidden_dim, self.num_dim)
         self.decoder = Decoder(self.num_dim)
 
