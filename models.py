@@ -8,6 +8,15 @@ import math
 OUT_DIM = {2: 39, 4: 35, 6: 31}
 
 
+# The encoder is composed of 4 convolutional layers with 32 filters per layer. 
+# The convolutional filters are of size (3 × 3) and shifted across the images 
+# with stride 1 (only the first convolutional layer has stride 2 to quickly 
+# reduce the input dimensionality). Batch normalization is also used after 
+# the 2nd and 4th convolutional layers. 
+# The output features of the last convolutional layer are flattened and fed to 
+# two final fully connected layers of dimensions 256 and 20, respectively, 
+# compressing the features to a 20-dimensional feature vector. Each layer has ELU 
+# activations, except the last fully-connected layer with a linear activation.
 class Encoder(nn.Module):
     def __init__(self, hidden_dim=256, z_dim=20):
         super(Encoder, self).__init__()
@@ -37,7 +46,14 @@ class Encoder(nn.Module):
     def forward(self, x):
         return self.encoder(x)
 
-       
+
+# The decoder is composed of a linear fully-connected layer and 4 transpose 
+# convolutional layers with 32 filters each. The convolutional filters are of 
+# size (3 × 3) and shifted across the images with stride 1 (again, the last 
+# convolutional layer has stride 2). Batch normalization is used after the 
+# 2nd and 4th convolutional layers, and ELU activations are employed for all 
+# the layers except the last one. 
+# The outputs are the mean μ_xhat_t and variance sigma2_xhat_t of N(mu_xhat_t, sigma2_xhat_t).
 class Decoder(nn.Module):
     def __init__(self, z_dim=20):
         super(Decoder, self).__init__()
@@ -69,6 +85,10 @@ class Decoder(nn.Module):
         return self.decoder(z)
     
 
+# The latent variables of the feature vector are fed to independent GPs with 
+# constant mean and ARD-SE kernel, which produces a 20-dimensional latent state 
+# distribution p( z_t | x_t ). From the latent state distribution p( z_t | x_t ), we 
+# can sample the latent state vectors z_t.
 class GaussianProcessLayer(gpytorch.models.ApproximateGP):
     def __init__(self, num_dim, grid_size=64, grid_bounds=(-10.,10)):
         # num_dim: number of dimensions (tasks) in the GP model, namely the dimensionality of the output space.
@@ -105,6 +125,10 @@ class GaussianProcessLayer(gpytorch.models.ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean, covar)
     
 
+# Complete autoencoder.
+# The latent state vectors z_t are fed into the decoder D to learn 
+# the reconstruction distribution p(xˆt|zt). A popular choice for p(x_t|z_t) 
+# is Gaussian with unit variance.
 class SVDKL_AE(gpytorch.Module):
     def __init__(self, num_dim, likelihood, grid_bounds=(-10.,10.), hidden_dim=32, grid_size=32):
         super(SVDKL_AE, self).__init__()
