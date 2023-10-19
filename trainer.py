@@ -4,6 +4,7 @@ import numpy as np
 from utils import sample_batch
 from losses import loss_bce
 
+
 def train(model, train_data, optimizer, batch_size, num_epochs):
     
     model.train()
