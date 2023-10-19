@@ -44,7 +44,7 @@ observation, reward, terminated, truncated, info = env.step(action) # run one ti
 frame = np.array(env.render()) # compute the render frames
 
 action = np.array([0.0]) # null action
-for step_index in range(max_step - 1): 
+for step_index in range(max_step):
     prev_frame = frame
 
     # Render new frame
