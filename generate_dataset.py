@@ -42,10 +42,10 @@ max_step = 200 # Pendulum-v1 episode truncates at 200 time steps.
 action = env.action_space.sample() # only at the first step, we take a random action
 observation, reward, terminated, truncated, info = env.step(action) # run one timestep of the environment’s dynamics using the agent actions
 frame = np.array(env.render()) # compute the render frames
-logger.obslog(frame) # log the frame
 
 action = np.array([0.0]) # null action
-for step_index in range(max_step - 1): 
+# for step_index in range(max_step - 1): 
+for step_index in range(5): 
     prev_frame = frame
 
     # Render new frame
@@ -53,8 +53,8 @@ for step_index in range(max_step - 1):
     frame = np.array(env.render())
 
     # Stack and log two consecutive frames
-    stacked_frames = stack_frames(prev_frame=prev_frame, frame=frame, size1=frame_dim1, size2=frame_dim2)
-    logger.obslog(stacked_frames)
+    obs = stack_frames(prev_frame=prev_frame, frame=frame, size1=frame_dim1, size2=frame_dim2)
+    logger.obslog(obs)
 
 # Save the dataset
 logger.save_obslog(filename=data_file_name)
