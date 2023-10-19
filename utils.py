@@ -22,3 +22,8 @@ def stack_frames(prev_frame, frame, size1=84, size2=84):
     frame = cv2.resize(frame, (size1, size2))
     stacked_frames = np.concatenate((prev_frame, frame), axis=-1)
     return stacked_frames
+
+
+def sample_batch(data, batch_size=32):
+    idxs = np.random.randint(0, len(data), batch_size)
+    return data[idxs]
