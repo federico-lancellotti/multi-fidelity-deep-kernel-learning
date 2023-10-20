@@ -14,10 +14,10 @@ def train(model, train_data, optimizer, batch_size, num_epochs):
 
     train_loss = 0
 
-    sample_size = len(train_data)
+    sample_size = train_data.size
     for i in range(int(sample_size/batch_size)):
         # Batch 
-        data = np.array(sample_batch(train_data, batch_size))
+        data = np.array(train_data.sample_batch(batch_size))
         obs = torch.from_numpy(data).permute(0, 3, 1, 2)    # (batch_size, channels, height, width)
         
         # obs = obs.to(mps_device)  # uncomment this to pass data to Apple Silicon GPU (currently not working)

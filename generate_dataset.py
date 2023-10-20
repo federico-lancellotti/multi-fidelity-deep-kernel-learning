@@ -37,25 +37,24 @@ folder = os.path.join(directory + '/Data/')
 logger = Logger(folder)
 
 max_step = 200 # Pendulum-v1 episode truncates at 200 time steps.
-
-# First step (with random action)
-action = env.action_space.sample() # only at the first step, we take a random action
-observation, reward, terminated, truncated, info = env.step(action) # run one timestep of the environment’s dynamics using the agent actions
-frame = np.array(env.render()) # compute the render frames
-frame = frame.astype(np.float32) / 255
-
 action = np.array([0.0]) # null action
-for step_index in range(max_step):
-    prev_frame = frame
 
-    # Render new frame
-    observation, reward, terminated, truncated, info = env.step(action)
-    frame = np.array(env.render())
-    frame = frame.astype(np.float32) / 255
+for episode in range(num_episodes):
+    state = env.reset() # reset the environment with new (random) initial conditions
+    frame = np.array(env.render()) # renders the frame
+    
+    print('Episode: ', episode)
+    
+    for step_index in range(max_step):
+        prev_frame = frame
 
-    # Stack and log two consecutive frames
-    obs = stack_frames(prev_frame=prev_frame, frame=frame, size1=frame_dim1, size2=frame_dim2)
-    logger.obslog(obs)
+        # Render new frame
+        observation, reward, terminated, truncated, info = env.step(action) # run one timestep of the environment’s dynamics using the agent actions
+        frame = np.array(env.render())
+
+        # Stack and log two consecutive frames
+        obs = stack_frames(prev_frame=prev_frame, frame=frame, size1=frame_dim1, size2=frame_dim2)
+        logger.obslog((obs, terminated))
 
 # Save the dataset
 logger.save_obslog(filename=data_file_name)

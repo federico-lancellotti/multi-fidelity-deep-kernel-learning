@@ -8,6 +8,7 @@ from models import SVDKL_AE
 from logger import Logger
 from utils import load_pickle
 from trainer import train
+from data_loader import DataLoader
 
 from datetime import datetime
 
@@ -110,12 +111,16 @@ def main(exp='Pendulum', mtype='DKL', noise_level=0.0, training_dataset='pendulu
     if not os.path.exists(save_pth_dir):
         os.makedirs(save_pth_dir)
 
+    # Preprocessing of the data
+    train_loader = DataLoader(data, obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3))
+    test_loader = DataLoader(data_test, obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3))
+
     # Training
     if training:
         print("start training...")
         for epoch in range(1, max_epoch):
             with gpytorch.settings.cholesky_jitter(jitter):
-                train(model=model, train_data=data, optimizer=optimizer, batch_size=batch_size, num_epochs=epoch)
+                train(model=model, train_data=train_loader, optimizer=optimizer, batch_size=batch_size, num_epochs=epoch)
 
             if epoch % log_interval == 0:
                 torch.save({'model': model.state_dict(), 'likelihood': model.likelihood.state_dict()}, 
