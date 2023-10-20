@@ -50,6 +50,7 @@ for step_index in range(max_step):
     # Render new frame
     observation, reward, terminated, truncated, info = env.step(action)
     frame = np.array(env.render())
+    frame = frame.astype(np.float32)
 
     # Stack and log two consecutive frames
     obs = stack_frames(prev_frame=prev_frame, frame=frame, size1=frame_dim1, size2=frame_dim2)
