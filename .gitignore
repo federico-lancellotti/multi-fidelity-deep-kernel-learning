@@ -169,5 +169,8 @@ cython_debug/
 Data/
 videos/
 
+# Results
+Results/
+
 # Visual Studio Code
 .vscode/
