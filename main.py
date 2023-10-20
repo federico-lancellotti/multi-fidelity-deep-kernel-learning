@@ -14,18 +14,21 @@ from datetime import datetime
 # for 84x84 inputs
 OUT_DIM = {2: 39, 4: 35, 6: 31}
 
+use_gpu = False
+
 # set seed and GPU
 seed = 2
 torch.manual_seed(seed)
 np.random.seed(seed)
-if torch.cuda.is_available():
-    torch.cuda.empty_cache()
-    print('CUDA available:', torch.cuda.is_available())
-    torch.cuda.manual_seed(seed)
-elif torch.backends.mps.is_available(): # Apple Silicon
-    torch.mps.empty_cache()
-    print('MPS available:', torch.backends.mps.is_available())
-    torch.mps.manual_seed(seed)
+if use_gpu: 
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        print('CUDA available:', torch.cuda.is_available())
+        torch.cuda.manual_seed(seed)
+    elif torch.backends.mps.is_available(): # Apple Silicon
+        torch.mps.empty_cache()
+        print('MPS available:', torch.backends.mps.is_available())
+        torch.mps.manual_seed(seed)
 
 # training hyperparameters
 batch_size = 50
@@ -85,12 +88,13 @@ def main(exp='Pendulum', mtype='DKL', noise_level=0.0, training_dataset='pendulu
 
     model = SVDKL_AE(num_dim=latent_dim, likelihood=likelihood, grid_bounds=(-10., 10.), hidden_dim=h_dim, grid_size=grid_size)
 
-    if torch.cuda.is_available():
-        model = model.cuda()
-        gc.collect()    # NOTE: Critical to avoid GPU leak
-    elif torch.backends.mps.is_available(): # on Apple Silicon
-        mps_device = torch.device("mps")
-        model.to(mps_device)
+    if use_gpu:
+        if torch.cuda.is_available():
+            model = model.cuda()
+            gc.collect()    # NOTE: Critical to avoid GPU leak
+        elif torch.backends.mps.is_available(): # on Apple Silicon
+            mps_device = torch.device("mps")
+            model.to(mps_device)
     
     # Use the adam optimizer
     optimizer = torch.optim.Adam([
