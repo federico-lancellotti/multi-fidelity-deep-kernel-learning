@@ -9,6 +9,8 @@ def train(model, train_data, optimizer, batch_size, num_epochs):
     
     model.train()
 
+    train_loss = 0
+
     sample_size = len(train_data)
     for i in range(int(sample_size/batch_size)):
         # Batch 
@@ -25,7 +27,7 @@ def train(model, train_data, optimizer, batch_size, num_epochs):
         loss = loss_bce(mu_x, obs)
 
         # Gradient computation
-        loss.gradient()
+        loss.backward()
         train_loss += loss.item()
 
         # Optimization step

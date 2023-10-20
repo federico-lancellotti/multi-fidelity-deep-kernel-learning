@@ -93,10 +93,12 @@ class GaussianProcessLayer(gpytorch.models.ApproximateGP):
     def __init__(self, num_dim, grid_size=64, grid_bounds=(-10.,10)):
         # num_dim: number of dimensions (tasks) in the GP model, namely the dimensionality of the output space.
         # grid_size: the grid is a set of points used to approximate the GP model. A larger grid size provides a denser approximation.
-        # grid_bounds: specifies the bounds of the grid in the input space.
+        # grid_bounds: specifies the bounds of the regularization.
+        
         variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             num_inducing_points=grid_size, batch_shape=torch.Size([num_dim])
         )
+        
         # Our base variational strategy is a GridInterpolationVariationalStrategy,
         # which places variational inducing points on a Grid
         # We wrap it with a IndependentMultitaskVariationalStrategy so that our output is a vector-valued GP
@@ -157,7 +159,7 @@ class SVDKL_AE(gpytorch.Module):
             res = self.gp_layer(features)
 
         mean = res.mean
-        covar = res.covar
+        covar = res.variance
         z = self.likelihood(res).rsample()
 
         mu_hat, var_hat = self.decoder.decoder(z)

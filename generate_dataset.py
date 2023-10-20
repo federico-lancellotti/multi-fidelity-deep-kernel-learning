@@ -42,6 +42,7 @@ max_step = 200 # Pendulum-v1 episode truncates at 200 time steps.
 action = env.action_space.sample() # only at the first step, we take a random action
 observation, reward, terminated, truncated, info = env.step(action) # run one timestep of the environment’s dynamics using the agent actions
 frame = np.array(env.render()) # compute the render frames
+frame = frame.astype(np.float32) / 255
 
 action = np.array([0.0]) # null action
 for step_index in range(max_step):
