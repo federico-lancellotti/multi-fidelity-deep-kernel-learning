@@ -27,3 +27,7 @@ class DataLoader:
         batch = [self.obs[i] for i in idxs]
 
         return np.array(batch)
+    
+    # Returns a np.array with all the samples
+    def get_all_samples(self):
+        return np.array(self.obs)
