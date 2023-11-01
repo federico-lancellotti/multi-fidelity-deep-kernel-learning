@@ -5,7 +5,11 @@ import gpytorch
 import math
 
 # for 84x84 inputs
-OUT_DIM = {2: 39, 4: 35, 6: 31}
+# OUT_DIM = {2: 39, 4: 35, 6: 31}
+# for 42x42 inputs
+OUT_DIM = {4: 14}
+# for 21x21 inputs
+# OUT_DIM = {4: 4}
 
 
 # The encoder is composed of 4 convolutional layers with 32 filters per layer.
