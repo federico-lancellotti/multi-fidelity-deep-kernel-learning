@@ -12,77 +12,65 @@ from data_loader import DataLoader
 
 from datetime import datetime
 
+import yaml
+
 # for 84x84 inputs
 OUT_DIM = {2: 39, 4: 35, 6: 31}
 
 use_gpu = False
 
-# set seed and GPU
-seed = 2
-torch.manual_seed(seed)
-np.random.seed(seed)
-if use_gpu:
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        print("CUDA available:", torch.cuda.is_available())
-        torch.cuda.manual_seed(seed)
-    elif torch.backends.mps.is_available():  # Apple Silicon
-        torch.mps.empty_cache()
-        print("MPS available:", torch.backends.mps.is_available())
-        torch.mps.manual_seed(seed)
 
-# training hyperparameters
-batch_size = 50
-max_epoch = 100
+def main():
+    # Import args
+    with open("config.yaml", "r") as file:
+        args = yaml.safe_load(file)
 
-training = True
-plotting = False
-num_samples_plot = 200
+    # Set seed and GPU
+    seed = args["seed"]
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    if use_gpu:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            print("CUDA available:", torch.cuda.is_available())
+            torch.cuda.manual_seed(seed)
+        elif torch.backends.mps.is_available():  # Apple Silicon
+            torch.mps.empty_cache()
+            print("MPS available:", torch.backends.mps.is_available())
+            torch.mps.manual_seed(seed)
 
-# learning rate
-lr = 1e-4
-lr_gp = 1e-2
-lr_gp_var = 1e-2
-lr_gp_lik = 1e-2
-reg_coef = 1e-2
-k1 = 1.0  # coefficient-recon-loss
-k2 = 1.0  # coefficient-fwd-kl-loss
-grid_size = 32
+    # Set parameters
+    seed = args["seed"]
+    batch_size = args["batch_size"]
+    max_epoch = args["max_epoch"]
+    training = args["training"]
+    # plotting = args["plotting"]
+    # num_samples_plot = args["num_samples_plot"]
+    lr = float(args["lr"])
+    lr_gp = float(args["lr_gp"])
+    # lr_gp_var = args["lr_gp_var"]
+    # lr_gp_lik = args["lr_gp_lik"]
+    reg_coef = float(args["reg_coef"])
+    # k1 = args["k1"]
+    # k2 = args["k2"]
+    grid_size = args["grid_size"]
+    latent_dim = args["latent_dim"]
+    # act_dim = args["act_dim"]
+    # state_dim = args["state_dim"]
+    obs_dim_1 = args["obs_dim_1"]
+    obs_dim_2 = args["obs_dim_2"]
+    obs_dim_3 = args["obs_dim_3"]
+    h_dim = args["h_dim"]
+    noise_level = args["noise_level"]
+    # noise_level_act = args["noise_level_act"]
+    exp = args["exp"]
+    mtype = args["mtype"]
+    training_dataset = args["training_dataset"]
+    testing_dataset = args["testing_dataset"]
+    log_interval = args["log_interval"]
+    jitter = float(args["jitter"])
 
-# build model
-latent_dim = 20
-act_dim = 1
-state_dim = 3
-obs_dim_1 = 84
-obs_dim_2 = 84
-obs_dim_3 = 6
-h_dim = 256
-
-# noise level on observations
-noise_level = 0.0
-
-# noise level on dynamics (actions)
-noise_level_act = 0.0
-
-# experiment and model type
-exp = "Pendulum"
-mtype = "DKL"
-training_dataset = "pendulum_train.pkl"
-testing_dataset = "pendulum_test.pkl"
-
-log_interval = 50
-
-jitter = 1e-8
-
-
-def main(
-    exp="Pendulum",
-    mtype="DKL",
-    noise_level=0.0,
-    training_dataset="pendulum_train.pkl",
-    testing_dataset="pendulum_test.pkl",
-):
-    # load data
+    # Load data
     directory = os.path.dirname(os.path.abspath(__file__))
 
     folder = os.path.join(directory + "/Data", training_dataset)
@@ -95,6 +83,7 @@ def main(
         latent_dim, rank=0, has_task_noise=True, has_global_noise=False
     )
 
+    # Model initialization
     model = SVDKL_AE(
         num_dim=latent_dim,
         likelihood=likelihood,

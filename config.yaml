@@ -1,0 +1,45 @@
+# seed
+seed: 2
+
+# training hyperparameters
+batch_size: 50
+max_epoch: 100
+
+training: true
+plotting: false
+num_samples_plot: 200
+
+# learning rate
+lr: 1e-4
+lr_gp: 1e-2
+lr_gp_var: 1e-2
+lr_gp_lik: 1e-2
+reg_coef: 1e-2
+k1: 1.0  # coefficient-recon-loss
+k2: 1.0  # coefficient-fwd-kl-loss
+grid_size: 32
+
+# build model
+latent_dim: 20
+act_dim: 1
+state_dim: 3
+obs_dim_1: 84
+obs_dim_2: 84
+obs_dim_3: 6
+h_dim: 256
+
+# noise level on observations
+noise_level: 0.0
+
+# noise level on dynamics (actions)
+noise_level_act: 0.0
+
+# experiment and model type
+exp: "Pendulum"
+mtype: "DKL"
+training_dataset: "pendulum_train.pkl"
+testing_dataset: "pendulum_test.pkl"
+
+log_interval: 50
+
+jitter: 1e-8
