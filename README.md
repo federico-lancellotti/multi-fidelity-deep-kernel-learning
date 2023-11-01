@@ -4,7 +4,10 @@
 Generate the dataset, a simulated video of a pendulum.
 
 ### Second step
-Investigate the Intrinsic Dimensionality of the dynamical system, using the Levina-Bickel algoritm.
+Set the parameters in config.yaml and train the model running main.py
+
+### Third step
+Investigate the Intrinsic Dimensionality of the dynamical system, via the Levina-Bickel algoritm, running eval_intrinsic_dimension.py
 
 ## To-Do
 1. check the ID algorithm on different datasets
