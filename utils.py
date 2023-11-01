@@ -5,14 +5,15 @@ import cv2
 
 # Saves and loads the data as a pickle file
 def save_pickle(filename, data):
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 
-def load_pickle(file):
-    if not file[-3:] == 'pkl' and not file[-3:] == 'kle':
-        file = file+'pkl'
 
-    with open(file, 'rb') as f:
+def load_pickle(file):
+    if not file[-3:] == "pkl" and not file[-3:] == "kle":
+        file = file + "pkl"
+
+    with open(file, "rb") as f:
         data = pickle.load(f)
 
     return data

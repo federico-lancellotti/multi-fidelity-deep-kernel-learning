@@ -21,14 +21,14 @@ use_gpu = False
 seed = 2
 torch.manual_seed(seed)
 np.random.seed(seed)
-if use_gpu: 
+if use_gpu:
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-        print('CUDA available:', torch.cuda.is_available())
+        print("CUDA available:", torch.cuda.is_available())
         torch.cuda.manual_seed(seed)
-    elif torch.backends.mps.is_available(): # Apple Silicon
+    elif torch.backends.mps.is_available():  # Apple Silicon
         torch.mps.empty_cache()
-        print('MPS available:', torch.backends.mps.is_available())
+        print("MPS available:", torch.backends.mps.is_available())
         torch.mps.manual_seed(seed)
 
 # training hyperparameters
@@ -45,8 +45,8 @@ lr_gp = 1e-2
 lr_gp_var = 1e-2
 lr_gp_lik = 1e-2
 reg_coef = 1e-2
-k1 = 1.0    # coefficient-recon-loss
-k2 = 1.0    # coefficient-fwd-kl-loss
+k1 = 1.0  # coefficient-recon-loss
+k2 = 1.0  # coefficient-fwd-kl-loss
 grid_size = 32
 
 # build model
@@ -75,39 +75,65 @@ log_interval = 50
 jitter = 1e-8
 
 
-def main(exp='Pendulum', mtype='DKL', noise_level=0.0, training_dataset='pendulum_train.pkl', testing_dataset='pendulum_test.pkl'):
+def main(
+    exp="Pendulum",
+    mtype="DKL",
+    noise_level=0.0,
+    training_dataset="pendulum_train.pkl",
+    testing_dataset="pendulum_test.pkl",
+):
     # load data
     directory = os.path.dirname(os.path.abspath(__file__))
 
-    folder = os.path.join(directory + '/Data', training_dataset)
-    folder_test = os.path.join(directory + '/Data', testing_dataset)
+    folder = os.path.join(directory + "/Data", training_dataset)
+    folder_test = os.path.join(directory + "/Data", testing_dataset)
 
     data = load_pickle(folder)
     data_test = load_pickle(folder_test)
 
-    likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(latent_dim, rank=0, has_task_noise=True, has_global_noise=False)
+    likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
+        latent_dim, rank=0, has_task_noise=True, has_global_noise=False
+    )
 
-    model = SVDKL_AE(num_dim=latent_dim, likelihood=likelihood, grid_bounds=(-10., 10.), hidden_dim=h_dim, grid_size=grid_size)
+    model = SVDKL_AE(
+        num_dim=latent_dim,
+        likelihood=likelihood,
+        grid_bounds=(-10.0, 10.0),
+        hidden_dim=h_dim,
+        grid_size=grid_size,
+    )
 
     if use_gpu:
         if torch.cuda.is_available():
             model = model.cuda()
-            gc.collect()    # NOTE: Critical to avoid GPU leak
-        elif torch.backends.mps.is_available(): # on Apple Silicon
+            gc.collect()  # NOTE: Critical to avoid GPU leak
+        elif torch.backends.mps.is_available():  # on Apple Silicon
             mps_device = torch.device("mps")
             model.to(mps_device)
-    
+
     # Use the adam optimizer
-    optimizer = torch.optim.Adam([
-        {'params': model.encoder.parameters()},
-        {'params': model.decoder.parameters()},
-        {'params': model.gp_layer.hyperparameters(), 'lr': lr_gp},
-        ], lr=lr, weight_decay=reg_coef)
-    
+    optimizer = torch.optim.Adam(
+        [
+            {"params": model.encoder.parameters()},
+            {"params": model.decoder.parameters()},
+            {"params": model.gp_layer.hyperparameters(), "lr": lr_gp},
+        ],
+        lr=lr,
+        weight_decay=reg_coef,
+    )
+
     # Set how to save the model
     now = datetime.now()
     date_string = now.strftime("%d-%m-%Y_%Hh-%Mm-%Ss")
-    save_pth_dir = directory + '/Results/' + str(exp) + '/' + str(mtype) + '/Noise_level_' + str(noise_level)
+    save_pth_dir = (
+        directory
+        + "/Results/"
+        + str(exp)
+        + "/"
+        + str(mtype)
+        + "/Noise_level_"
+        + str(noise_level)
+    )
     if not os.path.exists(save_pth_dir):
         os.makedirs(save_pth_dir)
 
@@ -120,15 +146,27 @@ def main(exp='Pendulum', mtype='DKL', noise_level=0.0, training_dataset='pendulu
         print("start training...")
         for epoch in range(1, max_epoch):
             with gpytorch.settings.cholesky_jitter(jitter):
-                train(model=model, train_data=train_loader, optimizer=optimizer, batch_size=batch_size, num_epochs=epoch)
+                train(
+                    model=model,
+                    train_data=train_loader,
+                    optimizer=optimizer,
+                    batch_size=batch_size,
+                    num_epochs=epoch,
+                )
 
             if epoch % log_interval == 0:
-                torch.save({'model': model.state_dict(), 'likelihood': model.likelihood.state_dict()}, 
-                           save_pth_dir +'/DKL_Model_' + date_string+'.pth')
+                torch.save(
+                    {
+                        "model": model.state_dict(),
+                        "likelihood": model.likelihood.state_dict(),
+                    },
+                    save_pth_dir + "/DKL_Model_" + date_string + ".pth",
+                )
 
-        torch.save({'model': model.state_dict(), 'likelihood': model.likelihood.state_dict()}, 
-                   save_pth_dir + '/DKL_Model_' + date_string + '.pth')
-
+        torch.save(
+            {"model": model.state_dict(), "likelihood": model.likelihood.state_dict()},
+            save_pth_dir + "/DKL_Model_" + date_string + ".pth",
+        )
 
 
 if __name__ == "__main__":

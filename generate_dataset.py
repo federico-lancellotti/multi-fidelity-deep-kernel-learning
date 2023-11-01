@@ -7,16 +7,21 @@ from utils import stack_frames
 
 # Gymnasium is using np.bool8, which is deprecated.
 from warnings import filterwarnings
-filterwarnings(action='ignore', category=DeprecationWarning, message='`np.bool8` is a deprecated alias')
+
+filterwarnings(
+    action="ignore",
+    category=DeprecationWarning,
+    message="`np.bool8` is a deprecated alias",
+)
 
 
 # Config inputs (to migrate in a YAML file)
-env_name = 'Pendulum-v1'
+env_name = "Pendulum-v1"
 test = 0
 if test:
-    data_file_name = 'pendulum_test.pkl'
+    data_file_name = "pendulum_test.pkl"
 else:
-    data_file_name = 'pendulum_train.pkl'
+    data_file_name = "pendulum_train.pkl"
 frame_dim1 = 84
 frame_dim2 = 84
 num_episodes = 5
@@ -27,33 +32,39 @@ random_policy = True
 env = gym.make(env_name, g=9.81, render_mode="rgb_array")
 
 # Set seeds
-env.reset(seed=seed) # it should be enough to set 'np.random.seed(seed)', but just in cases...
+env.reset(
+    seed=seed
+)  # it should be enough to set 'np.random.seed(seed)', but just in cases...
 env.action_space.seed(seed)
 np.random.seed(seed)
 
 # Set logger
 directory = os.path.dirname(os.path.abspath(__file__))
-folder = os.path.join(directory + '/Data/')
+folder = os.path.join(directory + "/Data/")
 logger = Logger(folder)
 
-max_step = 200 # Pendulum-v1 episode truncates at 200 time steps.
-action = np.array([0.0]) # null action
+max_step = 200  # Pendulum-v1 episode truncates at 200 time steps.
+action = np.array([0.0])  # null action
 
 for episode in range(num_episodes):
-    state = env.reset() # reset the environment with new (random) initial conditions
-    frame = np.array(env.render()) # renders the frame
-    
-    print('Episode: ', episode)
-    
+    state = env.reset()  # reset the environment with new (random) initial conditions
+    frame = np.array(env.render())  # renders the frame
+
+    print("Episode: ", episode)
+
     for step_index in range(max_step):
         prev_frame = frame
 
         # Render new frame
-        observation, reward, terminated, truncated, info = env.step(action) # run one timestep of the environment’s dynamics using the agent actions
+        observation, reward, terminated, truncated, info = env.step(
+            action
+        )  # run one timestep of the environment’s dynamics using the agent actions
         frame = np.array(env.render())
 
         # Stack and log two consecutive frames
-        obs = stack_frames(prev_frame=prev_frame, frame=frame, size1=frame_dim1, size2=frame_dim2)
+        obs = stack_frames(
+            prev_frame=prev_frame, frame=frame, size1=frame_dim1, size2=frame_dim2
+        )
         logger.obslog((obs, terminated))
 
 # Save the dataset
