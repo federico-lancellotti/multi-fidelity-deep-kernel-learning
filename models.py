@@ -3,13 +3,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import gpytorch
 import math
+import yaml
 
-# for 84x84 inputs
-# OUT_DIM = {2: 39, 4: 35, 6: 31}
-# for 42x42 inputs
-OUT_DIM = {4: 14}
-# for 21x21 inputs
-# OUT_DIM = {4: 4}
+with open("config.yaml", "r") as file:
+    args = yaml.safe_load(file)
+OUT_DIM = args["out_dim"]
+obs_dim = args["obs_dim_1"]
+out_dim = OUT_DIM[obs_dim]
 
 
 # The encoder is composed of 4 convolutional layers with 32 filters per layer.
@@ -35,7 +35,6 @@ class Encoder(nn.Module):
             32, 32, kernel_size=(3, 3), stride=(1, 1)
         )  # (first) input shape (84,84,6) -> output shape (35,35,32)
         self.batch2 = nn.BatchNorm2d(32)
-        out_dim = OUT_DIM[4]
         self.fc1 = nn.Linear(32 * out_dim * out_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, z_dim)
 
@@ -67,7 +66,6 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
 
         # decoder part
-        out_dim = OUT_DIM[4]
         self.fc = nn.Linear(z_dim, 32 * out_dim * out_dim)
         self.unflatten = nn.Unflatten(dim=1, unflattened_size=(32, out_dim, out_dim))
         self.batch3 = nn.BatchNorm2d(32)

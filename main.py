@@ -113,7 +113,7 @@ def main():
 
     # Set how to save the model
     now = datetime.now()
-    date_string = now.strftime("%d-%m-%Y_%Hh-%Mm-%Ss")
+    date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
     save_pth_dir = (
         directory
         + "/Results/"
@@ -133,7 +133,7 @@ def main():
     # Training
     if training:
         print("start training...")
-        for epoch in range(1, max_epoch):
+        for epoch in range(1, max_epoch+1):
             with gpytorch.settings.cholesky_jitter(jitter):
                 train(
                     model=model,
@@ -149,12 +149,12 @@ def main():
                         "model": model.state_dict(),
                         "likelihood": model.likelihood.state_dict(),
                     },
-                    save_pth_dir + "/DKL_Model_" + date_string + ".pth",
+                    save_pth_dir + "/DKL_Model_" + str(obs_dim_1) + "_" + date_string + ".pth",
                 )
 
         torch.save(
             {"model": model.state_dict(), "likelihood": model.likelihood.state_dict()},
-            save_pth_dir + "/DKL_Model_" + date_string + ".pth",
+            save_pth_dir + "/DKL_Model_" + str(obs_dim_1) + "_" + date_string + ".pth",
         )
 
 

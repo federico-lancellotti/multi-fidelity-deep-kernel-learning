@@ -43,7 +43,7 @@ def eval_intrinsic_dimension():
     data = load_pickle(folder)
 
     # Load weights
-    weights_filename = "DKL_Model_01-11-2023_17h-46m-47s.pth"
+    weights_filename = args['weights_filename']
     weights_folder = os.path.join(directory + "/Results/Pendulum/DKL/Noise_level_0.0/", weights_filename)
     model.load_state_dict(torch.load(weights_folder)["model"])
     likelihood.load_state_dict(torch.load(weights_folder)["likelihood"])

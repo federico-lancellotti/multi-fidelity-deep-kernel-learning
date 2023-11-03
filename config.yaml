@@ -1,6 +1,12 @@
 # seed
 seed: 2
 
+# dataset generator
+env_name: "Pendulum-v1"
+# frame_dim1: 84
+# frame_dim2: 84
+num_episodes: 5
+
 # training hyperparameters
 batch_size: 50
 max_epoch: 100
@@ -27,6 +33,7 @@ obs_dim_1: 84
 obs_dim_2: 84
 obs_dim_3: 6
 h_dim: 256
+out_dim: {128: 57, 84: 35, 64: 25, 42: 14, 24: 5}
 
 # noise level on observations
 noise_level: 0.0
@@ -43,3 +50,6 @@ testing_dataset: "pendulum_test.pkl"
 log_interval: 50
 
 jitter: 1e-8
+
+# weights
+weights_filename: "DKL_Model_128_2023-11-03_15h-39m-42s.pth"
