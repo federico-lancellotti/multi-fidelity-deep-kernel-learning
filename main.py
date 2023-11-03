@@ -133,7 +133,7 @@ def main():
     # Training
     if training:
         print("start training...")
-        for epoch in range(1, max_epoch+1):
+        for epoch in range(1, max_epoch + 1):
             with gpytorch.settings.cholesky_jitter(jitter):
                 train(
                     model=model,
@@ -149,7 +149,12 @@ def main():
                         "model": model.state_dict(),
                         "likelihood": model.likelihood.state_dict(),
                     },
-                    save_pth_dir + "/DKL_Model_" + str(obs_dim_1) + "_" + date_string + ".pth",
+                    save_pth_dir
+                    + "/DKL_Model_"
+                    + str(obs_dim_1)
+                    + "_"
+                    + date_string
+                    + ".pth",
                 )
 
         torch.save(
