@@ -16,3 +16,7 @@ Investigate the Intrinsic Dimensionality of the dynamical system, via the Levina
 
 ## Issues
 1. the training does not work on Apple Silicon. multitask_gaussian_likelihood seems to be using the SparseMPS backend, currently not implemented
+
+## References
+- https://github.com/nicob15/DeepKernelLearningOfDynamicalModels
+- https://github.com/BoyuanChen/neural-state-variables
