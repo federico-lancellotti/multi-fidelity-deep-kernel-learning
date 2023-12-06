@@ -195,7 +195,7 @@ class SVDKL_AE(gpytorch.Module):
         mu_hat, var_hat = self.decoder.decoder(z)
 
         return mu_hat, var_hat, res, mean, covar, z
-    
+
 
 # Multi fidelity version of SVDKL_AE
 class MF_SVDKL_AE(gpytorch.Module):
@@ -217,7 +217,7 @@ class MF_SVDKL_AE(gpytorch.Module):
         self.gp_layer_LF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
         self.encoder_LF = Encoder(hidden_dim, self.num_dim)
         self.decoder_LF = Decoder(self.num_dim)
-        
+
         self.gp_layer_HF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
         self.encoder_HF = Encoder(hidden_dim, self.num_dim)
         self.decoder_HF = Decoder(self.num_dim)
@@ -264,9 +264,16 @@ class MF_SVDKL_AE(gpytorch.Module):
         covar_HF = res_LF.variance
         z_HF = self.likelihood(res_HF).rsample()
 
-        z = z_HF + self.rho*z_LF
+        z = z_HF + self.rho * z_LF
         mu_hat_HF, var_hat_HF = self.decoder_HF.decoder(z)
 
-        return mu_hat_LF, var_hat_LF, mu_hat_HF, var_hat_HF, res_HF, mean_HF, covar_HF, z
-
-
+        return (
+            mu_hat_LF,
+            var_hat_LF,
+            mu_hat_HF,
+            var_hat_HF,
+            res_HF,
+            mean_HF,
+            covar_HF,
+            z,
+        )
