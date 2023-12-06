@@ -5,7 +5,8 @@ seed: 2
 env_name: "Pendulum-v1"
 # frame_dim1: 84
 # frame_dim2: 84
-num_episodes: 5
+num_episodes: {0: 10, 1: 2}   # num_episode per level of fidelity
+jump: {0: 5, 1: 1}            # jump in render per level of fidelity
 
 # training hyperparameters
 batch_size: 50

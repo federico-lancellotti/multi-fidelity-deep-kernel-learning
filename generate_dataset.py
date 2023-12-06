@@ -16,21 +16,22 @@ filterwarnings(
 )
 
 
-def generate_dataset(test):
+def generate_dataset(test, level):
     # Config inputs
     with open("config.yaml", "r") as file:
         args = yaml.safe_load(file)
 
     env_name = args["env_name"]
     if test:
-        data_file_name = "pendulum_test.pkl"
+        data_file_name = "pendulum_test_" + str(level) + ".pkl"
         print("Generating test set...")
     else:
-        data_file_name = "pendulum_train.pkl"
+        data_file_name = "pendulum_train_" + str(level) + ".pkl"
         print("Generating training set...")
     frame_dim1 = args["obs_dim_1"]
     frame_dim2 = args["obs_dim_2"]
-    num_episodes = args["num_episodes"]
+    num_episodes = args["num_episodes"][level]
+    jump = args["jump"][level]
     seed = args["seed"]
 
     # Set Gym environment
@@ -58,15 +59,15 @@ def generate_dataset(test):
         frame = np.array(env.render())  # renders the frame
 
         print("Episode: ", episode)
-
-        for step_index in range(max_step):
+        for step_index in range(0,max_step,jump):
             prev_frame = frame
 
             # Render new frame
-            observation, reward, terminated, truncated, info = env.step(
-                action
-            )  # run one timestep of the environment’s dynamics using the agent actions
-            frame = np.array(env.render())
+            for i in range(jump):
+                observation, reward, terminated, truncated, info = env.step(
+                    action
+                )  # run one timestep of the environment’s dynamics using the agent actions
+                frame = np.array(env.render())
 
             # Stack and log two consecutive frames
             obs = stack_frames(
@@ -83,5 +84,7 @@ def generate_dataset(test):
 
 
 if __name__ == "__main__":
-    generate_dataset(test=0)
-    generate_dataset(test=1)
+    generate_dataset(test=0, level=0)
+    generate_dataset(test=1, level=0)
+    generate_dataset(test=0, level=1)
+    generate_dataset(test=1, level=1)
