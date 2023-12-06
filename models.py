@@ -1,4 +1,8 @@
+from typing import Union
+from linear_operator.operators import LinearOperator
 import torch
+from torch import Tensor
+from torch.distributions import Distribution
 import torch.nn as nn
 import torch.nn.functional as F
 import gpytorch
@@ -191,3 +195,78 @@ class SVDKL_AE(gpytorch.Module):
         mu_hat, var_hat = self.decoder.decoder(z)
 
         return mu_hat, var_hat, res, mean, covar, z
+    
+
+# Multi fidelity version of SVDKL_AE
+class MF_SVDKL_AE(gpytorch.Module):
+    def __init__(
+        self,
+        num_dim,
+        likelihood,
+        grid_bounds=(-10.0, 10.0),
+        hidden_dim=32,
+        grid_size=32,
+        rho=1,
+    ):
+        super(MF_SVDKL_AE, self).__init__()
+        self.num_dim = num_dim
+        self.grid_bounds = grid_bounds
+        self.likelihood = likelihood
+        self.rho = rho
+
+        self.gp_layer_LF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
+        self.encoder_LF = Encoder(hidden_dim, self.num_dim)
+        self.decoder_LF = Decoder(self.num_dim)
+        
+        self.gp_layer_HF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
+        self.encoder_HF = Encoder(hidden_dim, self.num_dim)
+        self.decoder_HF = Decoder(self.num_dim)
+
+        # This module will scale the NN features so that they're nice values
+        self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(
+            self.grid_bounds[0], self.grid_bounds[1]
+        )
+
+    def forward(self, x_LF, x_HF):
+        features_LF = self.encoder_LF(x_LF)
+        features_LF = self.scale_to_bounds(features_LF)
+        features_LF = features_LF.transpose(-1, -2).unsqueeze(
+            -1
+        )  # This line makes it so that we learn a GP for each feature
+
+        if self.training:
+            with gpytorch.settings.detach_test_caches(False):
+                self.gp_layer_LF.train()
+                self.gp_layer_LF.eval()
+                res_LF = self.gp_layer_LF(features_LF)
+        else:
+            res_LF = self.gp_layer_LF(features_LF)
+
+        z_LF = self.likelihood(res_LF).rsample()
+
+        mu_hat_LF, var_hat_LF = self.decoder_LF.decoder(z_LF)
+
+        features_HF = self.encoder_HF(x_HF)
+        features_HF = self.scale_to_bounds(features_HF)
+        features_HF = features_HF.transpose(-1, -2).unsqueeze(
+            -1
+        )  # This line makes it so that we learn a GP for each feature
+
+        if self.training:
+            with gpytorch.settings.detach_test_caches(False):
+                self.gp_layer_HF.train()
+                self.gp_layer_HF.eval()
+                res_HF = self.gp_layer_HF(features_HF)
+        else:
+            res_HF = self.gp_layer_HF(features_HF)
+
+        mean_HF = res_LF.mean
+        covar_HF = res_LF.variance
+        z_HF = self.likelihood(res_HF).rsample()
+
+        z = z_HF + self.rho*z_LF
+        mu_hat_HF, var_hat_HF = self.decoder_HF.decoder(z)
+
+        return mu_hat_LF, var_hat_LF, mu_hat_HF, var_hat_HF, res_HF, mean_HF, covar_HF, z
+
+

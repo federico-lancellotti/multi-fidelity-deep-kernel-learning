@@ -12,9 +12,11 @@ jump: {0: 5, 1: 1}            # jump in render per level of fidelity
 batch_size: 50
 max_epoch: 100
 
+rho: 1 
+
 training: true
-plotting: false
-num_samples_plot: 200
+# plotting: false
+# num_samples_plot: 200
 
 # learning rate
 lr: 1e-4
@@ -45,8 +47,8 @@ noise_level_act: 0.0
 # experiment and model type
 exp: "Pendulum"
 mtype: "DKL"
-training_dataset: "pendulum_train.pkl"
-testing_dataset: "pendulum_test.pkl"
+training_dataset: {0: "pendulum_train_0.pkl", 1: "pendulum_train_1.pkl"}
+testing_dataset: {0: "pendulum_test_0.pkl", 1: "pendulum_test_1.pkl"}
 
 log_interval: 50
 

@@ -4,7 +4,7 @@ import os
 import gpytorch
 import gc
 
-from models import SVDKL_AE
+from models import MF_SVDKL_AE
 from logger import Logger
 from utils import load_pickle
 from trainer import train
@@ -43,6 +43,7 @@ def main():
     seed = args["seed"]
     batch_size = args["batch_size"]
     max_epoch = args["max_epoch"]
+    rho = args["rho"]
     training = args["training"]
     lr = float(args["lr"])
     lr_gp = float(args["lr_gp"])
@@ -64,23 +65,31 @@ def main():
     # Load data
     directory = os.path.dirname(os.path.abspath(__file__))
 
-    folder = os.path.join(directory + "/Data", training_dataset)
-    folder_test = os.path.join(directory + "/Data", testing_dataset)
+    folder = [
+        os.path.join(directory + "/Data", training_dataset[0]),
+        os.path.join(directory + "/Data", training_dataset[1]),
+    ]
+    folder_test = [
+        os.path.join(directory + "/Data", testing_dataset[0]),
+        os.path.join(directory + "/Data", testing_dataset[1]),
+    ]
 
-    data = load_pickle(folder)
-    data_test = load_pickle(folder_test)
+    # low fidelity
+    data = [load_pickle(folder[0]), load_pickle(folder[1])]
+    data_test = [load_pickle(folder_test[0]), load_pickle(folder_test[1])]
 
     likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
         latent_dim, rank=0, has_task_noise=True, has_global_noise=False
     )
 
     # Model initialization
-    model = SVDKL_AE(
+    model = MF_SVDKL_AE(
         num_dim=latent_dim,
         likelihood=likelihood,
         grid_bounds=(-10.0, 10.0),
         hidden_dim=h_dim,
         grid_size=grid_size,
+        rho=rho,
     )
 
     if use_gpu:
@@ -94,9 +103,12 @@ def main():
     # Use the adam optimizer
     optimizer = torch.optim.Adam(
         [
-            {"params": model.encoder.parameters()},
-            {"params": model.decoder.parameters()},
-            {"params": model.gp_layer.hyperparameters(), "lr": lr_gp},
+            {"params": model.encoder_LF.parameters()},
+            {"params": model.decoder_LF.parameters()},
+            {"params": model.gp_layer_LF.hyperparameters(), "lr": lr_gp},
+            {"params": model.encoder_HF.parameters()},
+            {"params": model.decoder_HF.parameters()},
+            {"params": model.gp_layer_HF.hyperparameters(), "lr": lr_gp},
         ],
         lr=lr,
         weight_decay=reg_coef,
@@ -118,8 +130,14 @@ def main():
         os.makedirs(save_pth_dir)
 
     # Preprocessing of the data
-    train_loader = DataLoader(data, obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3))
-    test_loader = DataLoader(data_test, obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3))
+    train_loader = [
+        DataLoader(data[0], obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3)),
+        DataLoader(data[1], obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3)),
+    ]
+    test_loader = [
+        DataLoader(data_test[0], obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3)),
+        DataLoader(data_test[1], obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3)),
+    ]
 
     # Training
     if training:

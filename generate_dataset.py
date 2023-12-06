@@ -59,7 +59,7 @@ def generate_dataset(test, level):
         frame = np.array(env.render())  # renders the frame
 
         print("Episode: ", episode)
-        for step_index in range(0,max_step,jump):
+        for step_index in range(0, max_step, jump):
             prev_frame = frame
 
             # Render new frame
