@@ -50,7 +50,7 @@ def eval_intrinsic_dimension():
     model.load_state_dict(torch.load(weights_folder)["model"])
     likelihood.load_state_dict(torch.load(weights_folder)["likelihood"])
 
-    # Passare i dati di input attraverso il modello
+    # Load the input into the model
     data_loader = DataLoader(data, obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3))
     input_data = data_loader.get_all_samples()
     input_data = torch.from_numpy(input_data).permute(0, 3, 1, 2)
