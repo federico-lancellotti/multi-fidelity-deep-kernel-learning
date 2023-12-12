@@ -4,7 +4,7 @@ import os
 import gpytorch
 import gc
 
-from models import MF_SVDKL_AE
+from models import MF_SVDKL_AE_2step
 from logger import Logger
 from utils import load_pickle
 from trainer import train
@@ -83,7 +83,7 @@ def main():
     )
 
     # Model initialization
-    model = MF_SVDKL_AE(
+    model = MF_SVDKL_AE_2step(
         num_dim=latent_dim,
         likelihood=likelihood,
         grid_bounds=(-10.0, 10.0),
@@ -101,14 +101,21 @@ def main():
             model.to(mps_device)
 
     # Use the adam optimizer
+    # optimizer = torch.optim.Adam(
+    #     [
+    #         {"params": model.encoder_LF.parameters()},
+    #         {"params": model.decoder_LF.parameters()},
+    #         {"params": model.gp_layer_LF.hyperparameters(), "lr": lr_gp},
+    #         {"params": model.encoder_HF.parameters()},
+    #         {"params": model.decoder_HF.parameters()},
+    #         {"params": model.gp_layer_HF.hyperparameters(), "lr": lr_gp},
+    #     ],
+    #     lr=lr,
+    #     weight_decay=reg_coef,
+    # )
     optimizer = torch.optim.Adam(
         [
-            {"params": model.encoder_LF.parameters()},
-            {"params": model.decoder_LF.parameters()},
-            {"params": model.gp_layer_LF.hyperparameters(), "lr": lr_gp},
-            {"params": model.encoder_HF.parameters()},
-            {"params": model.decoder_HF.parameters()},
-            {"params": model.gp_layer_HF.hyperparameters(), "lr": lr_gp},
+            {"params": model.parameters(), "lr": lr_gp},
         ],
         lr=lr,
         weight_decay=reg_coef,
@@ -131,12 +138,12 @@ def main():
 
     # Preprocessing of the data
     train_loader = [
-        DataLoader(data[0], obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3)),
-        DataLoader(data[1], obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3)),
+        DataLoader(data[0], obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3)),
+        DataLoader(data[1], obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3)),
     ]
     test_loader = [
-        DataLoader(data_test[0], obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3)),
-        DataLoader(data_test[1], obs_dim=(obs_dim_1, obs_dim_2, obs_dim_3)),
+        DataLoader(data_test[0], obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3)),
+        DataLoader(data_test[1], obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3)),
     ]
 
     # Training
@@ -160,7 +167,7 @@ def main():
                     },
                     save_pth_dir
                     + "/DKL_Model_"
-                    + str(obs_dim_1)
+                    + str(obs_dim_1[1])
                     + "_"
                     + date_string
                     + ".pth",
@@ -168,7 +175,7 @@ def main():
 
         torch.save(
             {"model": model.state_dict(), "likelihood": model.likelihood.state_dict()},
-            save_pth_dir + "/DKL_Model_" + str(obs_dim_1) + "_" + date_string + ".pth",
+            save_pth_dir + "/DKL_Model_" + str(obs_dim_1[1]) + "_" + date_string + ".pth",
         )
 
 

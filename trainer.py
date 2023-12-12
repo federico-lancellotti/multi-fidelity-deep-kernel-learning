@@ -33,13 +33,14 @@ def train(model, train_data, optimizer, batch_size, num_epochs):
         optimizer.zero_grad()
 
         # Forward pass of the model
-        mu_x_LF, var_x_LF, mu_x_HF, var_x_HF, res_HF, mean_HF, covar_HF, z = model(
-            obs[0], obs[1]
-        )
+        # mu_x_LF, var_x_LF, mu_x_HF, var_x_HF, res_HF, mean_HF, covar_HF, z = model(
+        #     obs[0], obs[1]
+        # )
+        mu_x_HF, z = model(obs[0], obs[1])
 
         # Loss
-        # loss = loss_bce(mu_x_HF, obs[1])
-        loss = loss_bce(mu_x_LF, obs[0]) + loss_bce(mu_x_HF, obs[1])
+        loss = loss_bce(mu_x_HF, obs[1])
+        # loss = loss_bce(mu_x_LF, obs[0]) + loss_bce(mu_x_HF, obs[1])
 
         # Gradient computation
         loss.backward()

@@ -28,8 +28,8 @@ def generate_dataset(test, level):
     else:
         data_file_name = "pendulum_train_" + str(level) + ".pkl"
         print("Generating training set...")
-    frame_dim1 = args["obs_dim_1"]
-    frame_dim2 = args["obs_dim_2"]
+    frame_dim1 = args["obs_dim_1"][level]
+    frame_dim2 = args["obs_dim_2"][level]
     num_episodes = args["num_episodes"][level]
     jump = args["jump"][level]
     seed = args["seed"]

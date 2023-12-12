@@ -8,12 +8,15 @@ import torch.nn.functional as F
 import gpytorch
 import math
 import yaml
+import numpy as np
+
+from intrinsic_dimension import eval_id
 
 with open("config.yaml", "r") as file:
     args = yaml.safe_load(file)
 OUT_DIM = args["out_dim"]
 obs_dim = args["obs_dim_1"]
-out_dim = OUT_DIM[obs_dim]
+out_dim = [OUT_DIM[obs_dim[0]], OUT_DIM[obs_dim[1]]]
 
 
 # The encoder is composed of 4 convolutional layers with 32 filters per layer.
@@ -26,7 +29,7 @@ out_dim = OUT_DIM[obs_dim]
 # compressing the features to a 20-dimensional feature vector. Each layer has ELU
 # activations, except the last fully-connected layer with a linear activation.
 class Encoder(nn.Module):
-    def __init__(self, hidden_dim=256, z_dim=20):
+    def __init__(self, hidden_dim=256, z_dim=20, out_dim=84):
         super(Encoder, self).__init__()
 
         self.conv1 = nn.Conv2d(
@@ -66,7 +69,7 @@ class Encoder(nn.Module):
 # the layers except the last one.
 # The outputs are the mean μ_xhat_t and variance sigma2_xhat_t of N(mu_xhat_t, sigma2_xhat_t).
 class Decoder(nn.Module):
-    def __init__(self, z_dim=20):
+    def __init__(self, z_dim=20, out_dim=84):
         super(Decoder, self).__init__()
 
         # decoder part
@@ -77,9 +80,7 @@ class Decoder(nn.Module):
         self.deconv2 = nn.ConvTranspose2d(32, 32, kernel_size=(3, 3), stride=(1, 1))
         self.batch4 = nn.BatchNorm2d(32)
         self.deconv3 = nn.ConvTranspose2d(32, 32, kernel_size=(3, 3), stride=(1, 1))
-        self.deconv4 = nn.ConvTranspose2d(
-            32, 6, kernel_size=(3, 3), stride=(2, 2), output_padding=(1, 1)
-        )
+        self.deconv4 = nn.ConvTranspose2d(32, 6, kernel_size=(3, 3), stride=(2, 2), output_padding=(1, 1))
 
     def decoder(self, z):
         z = F.elu(self.fc(z))
@@ -158,6 +159,7 @@ class SVDKL_AE(gpytorch.Module):
         grid_bounds=(-10.0, 10.0),
         hidden_dim=32,
         grid_size=32,
+        out_dim=84,
     ):
         super(SVDKL_AE, self).__init__()
         self.num_dim = num_dim
@@ -165,8 +167,8 @@ class SVDKL_AE(gpytorch.Module):
         self.likelihood = likelihood
 
         self.gp_layer = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
-        self.encoder = Encoder(hidden_dim, self.num_dim)
-        self.decoder = Decoder(self.num_dim)
+        self.encoder = Encoder(hidden_dim, self.num_dim, out_dim)
+        self.decoder = Decoder(self.num_dim, out_dim)
 
         # This module will scale the NN features so that they're nice values
         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(
@@ -215,12 +217,12 @@ class MF_SVDKL_AE(gpytorch.Module):
         self.rho = rho
 
         self.gp_layer_LF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
-        self.encoder_LF = Encoder(hidden_dim, self.num_dim)
-        self.decoder_LF = Decoder(self.num_dim)
+        self.encoder_LF = Encoder(hidden_dim, self.num_dim, out_dim[0])
+        self.decoder_LF = Decoder(self.num_dim, out_dim[0])
 
         self.gp_layer_HF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
-        self.encoder_HF = Encoder(hidden_dim, self.num_dim)
-        self.decoder_HF = Decoder(self.num_dim)
+        self.encoder_HF = Encoder(hidden_dim, self.num_dim, out_dim[1])
+        self.decoder_HF = Decoder(self.num_dim, out_dim[1])
 
         # This module will scale the NN features so that they're nice values
         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(
@@ -260,8 +262,8 @@ class MF_SVDKL_AE(gpytorch.Module):
         else:
             res_HF = self.gp_layer_HF(features_HF)
 
-        mean_HF = res_LF.mean
-        covar_HF = res_LF.variance
+        mean_HF = res_HF.mean
+        covar_HF = res_HF.variance
         z_HF = self.likelihood(res_HF).rsample()
 
         z = z_HF + self.rho * z_LF
@@ -277,3 +279,108 @@ class MF_SVDKL_AE(gpytorch.Module):
             covar_HF,
             z,
         )
+
+
+# Reduced one-dimenional encoder for the 2-step model
+class reducedEncoder(nn.Module):
+    def __init__(self, z_dim=5):
+        super(reducedEncoder, self).__init__()
+
+        self.conv1 = nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3)
+        self.conv2 = nn.Conv1d(in_channels=32, out_channels=16, kernel_size=3)
+        self.batch_norm = nn.BatchNorm1d(16)
+        self.linear1 = nn.Linear(256, 16)
+        self.linear2 = nn.Linear(16, z_dim)
+
+    def encoder(self, x):
+        x = x.unsqueeze(1)
+        x = F.elu(self.conv1(x))
+        x = F.elu(self.conv2(x))
+        x = self.batch_norm(x)
+        x = x.view(x.size(0), -1)
+        x = F.elu(self.linear1(x))
+        x = F.elu(self.linear2(x))
+        return x
+
+    def forward(self, x):
+        return self.encoder(x)
+
+
+# Reduced one-dimensional decoder for the 2-step model
+class reducedDecoder(nn.Module):
+    def __init__(self, z_dim=5, output_dim=20):
+        super(reducedDecoder, self).__init__()
+
+        self.linear = nn.Linear(z_dim, 256)
+        self.batch_norm = nn.BatchNorm1d(256)
+        self.deconv2 = nn.ConvTranspose1d(in_channels=256, out_channels=32, kernel_size=3)
+        self.deconv1 = nn.ConvTranspose1d(in_channels=32, out_channels=1, kernel_size=3, stride=2, output_padding=1)
+        self.linear_output = nn.Linear(8, output_dim)
+
+    def decoder(self, z):
+        z = F.elu(self.linear(z))
+        z = z.unsqueeze(-1)
+        z = self.batch_norm(z)
+        z = F.elu(self.deconv2(z))
+        z = F.elu(self.deconv1(z))
+        z = z.squeeze(1)
+        z = self.linear_output(z)
+        return z
+
+    def forward(self, z):
+        return self.decoder(z)
+
+
+# 2-step multi fidelity version of SVDKL_AE
+class MF_SVDKL_AE_2step(gpytorch.Module):
+    def __init__(
+        self,
+        num_dim,
+        likelihood,
+        grid_bounds=(-10.0, 10.0),
+        hidden_dim=32,
+        grid_size=32,
+        rho=1,
+    ):
+        super(MF_SVDKL_AE_2step, self).__init__()
+        self.num_dim = num_dim
+        self.grid_bounds = grid_bounds
+        self.likelihood = likelihood
+        self.rho = rho
+        self.ID = 20
+
+        # Step 1: reduce the dimensionality of both the level of fidelity
+        self.LF_ae1 = SVDKL_AE(num_dim, likelihood, grid_bounds, hidden_dim, grid_size, out_dim[0])
+        self.HF_ae1 = SVDKL_AE(num_dim, likelihood, grid_bounds, hidden_dim, grid_size, out_dim[1])
+
+    def forward(self, x_LF, x_HF):
+        # Step 1: reduce the dimensionality of both the level of fidelity
+        _, _, _, _, _, y_LF = self.LF_ae1(x_LF)
+        _, _, _, _, _, y_HF = self.HF_ae1(x_HF)
+
+        # Estimation of the instrinsic dimension
+        ID_LF = eval_id(y_LF.detach().numpy())
+        ID_HF = eval_id(y_HF.detach().numpy())
+        self.ID = int(np.floor(np.max([ID_LF, ID_HF])))
+
+        # Step 2: autoencoder with latent representation as input
+        self.reducedEncoder_LF = reducedEncoder(self.ID)
+        z_LF = self.reducedEncoder_LF(y_LF)
+
+        self.reducedDecoder_LF = reducedDecoder(self.ID, self.num_dim)
+        y_hat_LF = self.reducedDecoder_LF.decoder(z_LF)
+
+        self.reducedEncoder_HF = reducedEncoder(self.ID)
+        z_HF = self.reducedEncoder_HF(y_HF)
+
+        self.reducedDecoder_HF = reducedDecoder(self.ID)
+        z = z_HF + self.rho * z_LF
+        y_hat_HF = self.reducedDecoder_HF.decoder(z)
+
+        # Step 1: decoding on the outer level
+        x_hat_LF, _ = self.LF_ae1.decoder(y_hat_LF)
+
+        y = y_hat_HF + self.rho * y_hat_LF
+        x_hat_HF, _ = self.HF_ae1.decoder(y)
+
+        return x_hat_HF, z

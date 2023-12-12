@@ -6,7 +6,7 @@ env_name: "Pendulum-v1"
 # frame_dim1: 84
 # frame_dim2: 84
 num_episodes: {0: 10, 1: 2}   # num_episode per level of fidelity
-jump: {0: 5, 1: 1}            # jump in render per level of fidelity
+jump: {0: 1, 1: 1}            # jump in render per level of fidelity
 
 # training hyperparameters
 batch_size: 50
@@ -32,8 +32,8 @@ grid_size: 32
 latent_dim: 20
 act_dim: 1
 state_dim: 3
-obs_dim_1: 84
-obs_dim_2: 84
+obs_dim_1: {0: 42, 1: 84}
+obs_dim_2: {0: 42, 1: 84}
 obs_dim_3: 6
 h_dim: 256
 out_dim: {128: 57, 84: 35, 64: 25, 42: 14, 24: 5}
