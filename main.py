@@ -4,7 +4,7 @@ import os
 import gpytorch
 import gc
 
-from models import MF_SVDKL_AE_2step
+from models import MF_SVDKL_AE
 from logger import Logger
 from utils import load_pickle
 from trainer import train
@@ -61,6 +61,7 @@ def main():
     testing_dataset = args["testing_dataset"]
     log_interval = args["log_interval"]
     jitter = float(args["jitter"])
+    jump = args["jump"]
 
     # Load data
     directory = os.path.dirname(os.path.abspath(__file__))
@@ -83,7 +84,7 @@ def main():
     )
 
     # Model initialization
-    model = MF_SVDKL_AE_2step(
+    model = MF_SVDKL_AE(
         num_dim=latent_dim,
         likelihood=likelihood,
         grid_bounds=(-10.0, 10.0),
@@ -101,25 +102,25 @@ def main():
             model.to(mps_device)
 
     # Use the adam optimizer
-    # optimizer = torch.optim.Adam(
-    #     [
-    #         {"params": model.encoder_LF.parameters()},
-    #         {"params": model.decoder_LF.parameters()},
-    #         {"params": model.gp_layer_LF.hyperparameters(), "lr": lr_gp},
-    #         {"params": model.encoder_HF.parameters()},
-    #         {"params": model.decoder_HF.parameters()},
-    #         {"params": model.gp_layer_HF.hyperparameters(), "lr": lr_gp},
-    #     ],
-    #     lr=lr,
-    #     weight_decay=reg_coef,
-    # )
     optimizer = torch.optim.Adam(
         [
-            {"params": model.parameters(), "lr": lr_gp},
+            {"params": model.encoder_LF.parameters()},
+            {"params": model.decoder_LF.parameters()},
+            {"params": model.gp_layer_LF.hyperparameters(), "lr": lr_gp},
+            {"params": model.encoder_HF.parameters()},
+            {"params": model.decoder_HF.parameters()},
+            {"params": model.gp_layer_HF.hyperparameters(), "lr": lr_gp},
         ],
         lr=lr,
         weight_decay=reg_coef,
     )
+    # optimizer = torch.optim.Adam(
+    #     [
+    #         {"params": model.parameters(), "lr": lr_gp},
+    #     ],
+    #     lr=lr,
+    #     weight_decay=reg_coef,
+    # )
 
     # Set how to save the model
     now = datetime.now()
@@ -130,8 +131,6 @@ def main():
         + str(exp)
         + "/"
         + str(mtype)
-        + "/Noise_level_"
-        + str(noise_level)
     )
     if not os.path.exists(save_pth_dir):
         os.makedirs(save_pth_dir)
@@ -175,7 +174,9 @@ def main():
 
         torch.save(
             {"model": model.state_dict(), "likelihood": model.likelihood.state_dict()},
-            save_pth_dir + "/DKL_Model_" + str(obs_dim_1[1]) + "_" + date_string + ".pth",
+            save_pth_dir + "/MFDKL_" + str(obs_dim_1[0]) + "-" + str(jump[0]) + "_" 
+                                     + str(obs_dim_1[1]) + "-" + str(jump[1]) + "_"
+                                     + date_string + ".pth",
         )
 
 
