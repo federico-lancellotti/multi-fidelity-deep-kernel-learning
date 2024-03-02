@@ -37,12 +37,6 @@ obs_dim_3: 6
 h_dim: 256
 out_dim: {128: 57, 84: 35, 64: 25, 42: 14, 24: 5}
 
-# noise level on observations
-noise_level: 0.0
-
-# noise level on dynamics (actions)
-noise_level_act: 0.0
-
 # experiment and model type
 exp: "Pendulum"
 mtype: "DKL"

@@ -2,12 +2,13 @@ import numpy as np
 
 
 class DataLoader:
-    def __init__(self, data, obs_dim):
+    def __init__(self, data, z_LF, obs_dim):
         self.size = len(data)
         self.obs = np.zeros(
             [int(self.size), int(obs_dim[0]), int(obs_dim[1]), int(obs_dim[2])],
             dtype=np.float32,
         )
+        self.z_LF = z_LF
         self.done = np.zeros(int(self.size), dtype=bool)
 
         pos = 0
@@ -16,18 +17,21 @@ class DataLoader:
             self.done[pos] = d[1]
             pos = pos + 1
 
-    # Returns a np.array random batch of dimension batch_size
+
+    # Returns a (list of) np.array random batches of dimension batch_size.
+    # Each element of the list is a batch at the respective level of fidelity.
     def sample_batch(self, batch_size=32):
-        idxs = np.random.randint(0, len(self.obs), batch_size)
+        idx = np.random.randint(0, self.size, batch_size)
 
-        for i in range(len(idxs)):
+        for i in range(len(idx)):
             if self.done[i] == True:
-                idxs[i] = idxs[i] - 1
+                idx[i] = idx[i] - 1
 
-        batch = [self.obs[i] for i in idxs]
+        batch = np.array([self.obs[i] for i in idx])
+        batch_z_LF = np.array([self.z_LF[i] for i in idx])
 
-        return np.array(batch)
-    
+        return batch, batch_z_LF
+
     # Returns a np.array with all the samples
     def get_all_samples(self):
-        return np.array(self.obs)
+        return np.array(self.obs), self.z_LF

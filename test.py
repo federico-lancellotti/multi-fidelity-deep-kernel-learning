@@ -71,18 +71,22 @@ def test():
     # mu_x_HF, z = model(input_data[0], input_data[1])
 
     # Convert to png
+    mu_x_HF = mu_x_HF.permute(0, 3, 2, 1)  # move color channel to the end
     mu_x_HF = mu_x_HF.detach().numpy()  # pass to numpy framework
-    mu_x_HF = mu_x_HF.reshape(100, 3, 84, 84)  # untie pairs of frames
-    mu_x_HF = mu_x_HF.reshape(100, 84, 84, 3)  # move color channel to the end
     filepath = directory + "/Results/Pendulum/DKL/plots/" + weights_filename + "/"
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 
-    for i in range(batch_size*2):
-        frame = mu_x_HF[i,:,:,:]
-        filename = filepath + str(i) + ".png"
-        plt.imshow(frame)  
-        plt.savefig(filename, format="png")
+    for i in range(batch_size):
+        frame1 = mu_x_HF[i,:,:,0:3]
+        filename1 = filepath + str(i) + str("_1") + ".png"
+        plt.imshow(frame1)  
+        plt.savefig(filename1, format="png")
+
+        frame2 = mu_x_HF[i,:,:,3:6]
+        filename2 = filepath + str(i) + str("_2") + ".png"
+        plt.imshow(frame2)  
+        plt.savefig(filename2, format="png")
 
 
 if __name__ == "__main__":
