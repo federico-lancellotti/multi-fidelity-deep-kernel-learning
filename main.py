@@ -112,7 +112,7 @@ def main():
     # Set how to save the model
     now = datetime.now()
     date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    save_pth_dir = directory + "/Results/" + str(exp) + str(mtype) + "/LF/"
+    save_pth_dir = directory + "/Results/" + str(exp) + "/" + str(mtype) + "/LF/"
     if not os.path.exists(save_pth_dir):
         os.makedirs(save_pth_dir)
 
@@ -199,7 +199,7 @@ def main():
     # Set how to save the model
     now = datetime.now()
     date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    save_pth_dir = directory + "/Results/" + str(exp) + str(mtype) + "/HF/" 
+    save_pth_dir = directory + "/Results/" + str(exp) + "/" + str(mtype) + "/HF/"
     if not os.path.exists(save_pth_dir):
         os.makedirs(save_pth_dir)
 

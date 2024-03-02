@@ -48,5 +48,5 @@ log_interval: 50
 jitter: 1e-8
 
 # weights
-weights_filename: ["MFDKL_LF_42-_84-_2024-03-02_16h-09m-28s",
-                  "MFDKL_HF_42-84_2024-03-02_16h-20m-48s"]
+weights_filename: ["MFDKL_LF_42_2024-03-02_18h-58m-39s",
+                   "MFDKL_HF_42-84_2024-03-02_19h-10m-16s"]

@@ -19,7 +19,7 @@ def test():
     h_dim = args["h_dim"]
     grid_size = args["grid_size"]
     test_set = args["training_dataset"]
-    #test_set = args["testing_dataset"]
+    # test_set = args["testing_dataset"]
     obs_dim_1 = args["obs_dim_1"]
     obs_dim_2 = args["obs_dim_2"]
     obs_dim_3 = args["obs_dim_3"]
@@ -64,19 +64,26 @@ def test():
     # Load weights
     weights_filename = args["weights_filename"]
     weights_folder = [
-        os.path.join(directory + "/Results/Pendulum/LF/DKL/", weights_filename[0] + ".pth"),
-        os.path.join(directory + "/Results/Pendulum/HF/DKL/", weights_filename[1] + ".pth")]
+        os.path.join(
+            directory + "/Results/Pendulum/DKL/LF", weights_filename[0] + ".pth"
+        ),
+        os.path.join(
+            directory + "/Results/Pendulum/DKL/HF", weights_filename[1] + ".pth"
+        ),
+    ]
 
     ## Low fidelity
     model_LF.load_state_dict(torch.load(weights_folder[0])["model"])
     likelihood.load_state_dict(torch.load(weights_folder[0])["likelihood"])
 
     z_LF = np.zeros((N[0], latent_dim))
-    data_loader_LF = DataLoader(data[0], z_LF, obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3))
+    data_loader_LF = DataLoader(
+        data[0], z_LF, obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3)
+    )
 
     input_data_LF, z_LF = data_loader_LF.get_all_samples()
     input_data_LF = torch.from_numpy(input_data_LF).permute(0, 3, 1, 2)
-    
+
     mu_hat, _, _, _, _, z_LF = model_LF(input_data_LF, z_LF)
     z_LF = z_LF.detach().numpy()
 
@@ -85,11 +92,13 @@ def test():
     likelihood.load_state_dict(torch.load(weights_folder[1])["likelihood"])
 
     z_LF = np.zeros((N[1], latent_dim))
-    data_loader_HF = DataLoader(data[1], z_LF[1], obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3))
+    data_loader_HF = DataLoader(
+        data[1], z_LF[1], obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3)
+    )
 
     input_data_HF, z_LF = data_loader_HF.get_all_samples()
     input_data_HF = torch.from_numpy(input_data_HF).permute(0, 3, 1, 2)
-    
+
     mu_hat, var_hat, res, mean, covar, z = model_HF(input_data_HF, z_LF)
 
     # Convert to png
@@ -100,14 +109,14 @@ def test():
         os.makedirs(filepath)
 
     for i in range(50):
-        frame1 = mu_hat[i,:,:,0:3]
+        frame1 = mu_hat[i, :, :, 0:3]
         filename1 = filepath + str(i) + str("_1") + ".png"
-        plt.imshow(frame1)  
+        plt.imshow(frame1)
         plt.savefig(filename1, format="png")
 
-        frame2 = mu_hat[i,:,:,3:6]
+        frame2 = mu_hat[i, :, :, 3:6]
         filename2 = filepath + str(i) + str("_2") + ".png"
-        plt.imshow(frame2)  
+        plt.imshow(frame2)
         plt.savefig(filename2, format="png")
 
 
