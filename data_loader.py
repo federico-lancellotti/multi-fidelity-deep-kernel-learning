@@ -17,7 +17,6 @@ class DataLoader:
             self.done[pos] = d[1]
             pos = pos + 1
 
-
     # Returns a (list of) np.array random batches of dimension batch_size.
     # Each element of the list is a batch at the respective level of fidelity.
     def sample_batch(self, batch_size=32):

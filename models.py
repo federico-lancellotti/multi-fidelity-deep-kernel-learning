@@ -15,8 +15,8 @@ from intrinsic_dimension import eval_id
 with open("config.yaml", "r") as file:
     args = yaml.safe_load(file)
 OUT_DIM = args["out_dim"]
-#obs_dim = args["obs_dim_1"]
-#out_dim = [OUT_DIM[obs_dim[0]], OUT_DIM[obs_dim[1]]]
+# obs_dim = args["obs_dim_1"]
+# out_dim = [OUT_DIM[obs_dim[0]], OUT_DIM[obs_dim[1]]]
 
 
 # The encoder is composed of 4 convolutional layers with 32 filters per layer.
@@ -80,7 +80,9 @@ class Decoder(nn.Module):
         self.deconv2 = nn.ConvTranspose2d(32, 32, kernel_size=(3, 3), stride=(1, 1))
         self.batch4 = nn.BatchNorm2d(32)
         self.deconv3 = nn.ConvTranspose2d(32, 32, kernel_size=(3, 3), stride=(1, 1))
-        self.deconv4 = nn.ConvTranspose2d(32, 6, kernel_size=(3, 3), stride=(2, 2), output_padding=(1, 1))
+        self.deconv4 = nn.ConvTranspose2d(
+            32, 6, kernel_size=(3, 3), stride=(2, 2), output_padding=(1, 1)
+        )
 
     def decoder(self, z):
         z = F.elu(self.fc(z))
@@ -195,148 +197,154 @@ class SVDKL_AE(gpytorch.Module):
 
         mean = res.mean
         covar = res.variance
-        z_LF = torch.tensor(z_LF.astype(np.float32))    # trasform the numpy array for compatibility
-        z = self.likelihood(res).rsample() + z_LF 
+        z_LF = torch.tensor(
+            z_LF.astype(np.float32)
+        )  # trasform the numpy array for compatibility
+        z = self.likelihood(res).rsample() + z_LF
 
         mu_hat, var_hat = self.decoder.decoder(z)
 
         return mu_hat, var_hat, res, mean, covar, z
 
 
-# # Multi fidelity version of SVDKL_AE
-# class MF_SVDKL_AE(gpytorch.Module):
-#     def __init__(
-#         self,
-#         num_dim,
-#         likelihood,
-#         grid_bounds=(-10.0, 10.0),
-#         hidden_dim=32,
-#         grid_size=32,
-#         rho=1,
-#     ):
-#         super(MF_SVDKL_AE, self).__init__()
-#         self.num_dim = num_dim
-#         self.grid_bounds = grid_bounds
-#         self.likelihood = likelihood
-#         self.rho = rho
+# Multi fidelity version of SVDKL_AE
+class MF_SVDKL_AE(gpytorch.Module):
+    def __init__(
+        self,
+        num_dim,
+        likelihood,
+        grid_bounds=(-10.0, 10.0),
+        hidden_dim=32,
+        grid_size=32,
+        rho=1,
+    ):
+        super(MF_SVDKL_AE, self).__init__()
+        self.num_dim = num_dim
+        self.grid_bounds = grid_bounds
+        self.likelihood = likelihood
+        self.rho = rho
 
-#         self.gp_layer_LF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
-#         self.encoder_LF = Encoder(hidden_dim, self.num_dim, out_dim[0])
-#         self.decoder_LF = Decoder(self.num_dim, out_dim[0])
+        self.gp_layer_LF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
+        self.encoder_LF = Encoder(hidden_dim, self.num_dim, out_dim[0])
+        self.decoder_LF = Decoder(self.num_dim, out_dim[0])
 
-#         self.gp_layer_HF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
-#         self.encoder_HF = Encoder(hidden_dim, self.num_dim, out_dim[1])
-#         self.decoder_HF = Decoder(self.num_dim, out_dim[1])
+        self.gp_layer_HF = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
+        self.encoder_HF = Encoder(hidden_dim, self.num_dim, out_dim[1])
+        self.decoder_HF = Decoder(self.num_dim, out_dim[1])
 
-#         # This module will scale the NN features so that they're nice values
-#         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(
-#             self.grid_bounds[0], self.grid_bounds[1]
-#         )
+        # This module will scale the NN features so that they're nice values
+        self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(
+            self.grid_bounds[0], self.grid_bounds[1]
+        )
 
-#     def forward(self, x_LF, x_HF):
-#         features_LF = self.encoder_LF(x_LF)
-#         features_LF = self.scale_to_bounds(features_LF)
-#         features_LF = features_LF.transpose(-1, -2).unsqueeze(
-#             -1
-#         )  # This line makes it so that we learn a GP for each feature
+    def forward(self, x_LF, x_HF):
+        features_LF = self.encoder_LF(x_LF)
+        features_LF = self.scale_to_bounds(features_LF)
+        features_LF = features_LF.transpose(-1, -2).unsqueeze(
+            -1
+        )  # This line makes it so that we learn a GP for each feature
 
-#         if self.training:
-#             with gpytorch.settings.detach_test_caches(False):
-#                 self.gp_layer_LF.train()
-#                 self.gp_layer_LF.eval()
-#                 res_LF = self.gp_layer_LF(features_LF)
-#         else:
-#             res_LF = self.gp_layer_LF(features_LF)
+        if self.training:
+            with gpytorch.settings.detach_test_caches(False):
+                self.gp_layer_LF.train()
+                self.gp_layer_LF.eval()
+                res_LF = self.gp_layer_LF(features_LF)
+        else:
+            res_LF = self.gp_layer_LF(features_LF)
 
-#         z_LF = self.likelihood(res_LF).rsample()
+        z_LF = self.likelihood(res_LF).rsample()
 
-#         mu_hat_LF, var_hat_LF = self.decoder_LF.decoder(z_LF)
+        mu_hat_LF, var_hat_LF = self.decoder_LF.decoder(z_LF)
 
-#         features_HF = self.encoder_HF(x_HF)
-#         features_HF = self.scale_to_bounds(features_HF)
-#         features_HF = features_HF.transpose(-1, -2).unsqueeze(
-#             -1
-#         )  # This line makes it so that we learn a GP for each feature
+        features_HF = self.encoder_HF(x_HF)
+        features_HF = self.scale_to_bounds(features_HF)
+        features_HF = features_HF.transpose(-1, -2).unsqueeze(
+            -1
+        )  # This line makes it so that we learn a GP for each feature
 
-#         if self.training:
-#             with gpytorch.settings.detach_test_caches(False):
-#                 self.gp_layer_HF.train()
-#                 self.gp_layer_HF.eval()
-#                 res_HF = self.gp_layer_HF(features_HF)
-#         else:
-#             res_HF = self.gp_layer_HF(features_HF)
+        if self.training:
+            with gpytorch.settings.detach_test_caches(False):
+                self.gp_layer_HF.train()
+                self.gp_layer_HF.eval()
+                res_HF = self.gp_layer_HF(features_HF)
+        else:
+            res_HF = self.gp_layer_HF(features_HF)
 
-#         mean_HF = res_HF.mean
-#         covar_HF = res_HF.variance
-#         z_HF = self.likelihood(res_HF).rsample()
+        mean_HF = res_HF.mean
+        covar_HF = res_HF.variance
+        z_HF = self.likelihood(res_HF).rsample()
 
-#         z = z_HF + self.rho * z_LF
-#         mu_hat_HF, var_hat_HF = self.decoder_HF.decoder(z)
+        z = z_HF + self.rho * z_LF
+        mu_hat_HF, var_hat_HF = self.decoder_HF.decoder(z)
 
-#         return (
-#             mu_hat_LF,
-#             var_hat_LF,
-#             mu_hat_HF,
-#             var_hat_HF,
-#             res_HF,
-#             mean_HF,
-#             covar_HF,
-#             z,
-#         )
-
-
-# # Reduced one-dimenional encoder for the 2-step model
-# class reducedEncoder(nn.Module):
-#     def __init__(self, z_dim=5):
-#         super(reducedEncoder, self).__init__()
-
-#         self.conv1 = nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3)
-#         self.conv2 = nn.Conv1d(in_channels=32, out_channels=16, kernel_size=3)
-#         self.batch_norm = nn.BatchNorm1d(16)
-#         self.linear1 = nn.Linear(256, 16)
-#         self.linear2 = nn.Linear(16, z_dim)
-
-#     def encoder(self, x):
-#         x = x.unsqueeze(1)
-#         x = F.elu(self.conv1(x))
-#         x = F.elu(self.conv2(x))
-#         x = self.batch_norm(x)
-#         x = x.view(x.size(0), -1)
-#         x = F.elu(self.linear1(x))
-#         x = F.elu(self.linear2(x))
-#         return x
-
-#     def forward(self, x):
-#         return self.encoder(x)
+        return (
+            mu_hat_LF,
+            var_hat_LF,
+            mu_hat_HF,
+            var_hat_HF,
+            res_HF,
+            mean_HF,
+            covar_HF,
+            z,
+        )
 
 
-# # Reduced one-dimensional decoder for the 2-step model
-# class reducedDecoder(nn.Module):
-#     def __init__(self, z_dim=5, output_dim=20):
-#         super(reducedDecoder, self).__init__()
+# Reduced one-dimenional encoder for the 2-step model
+class reducedEncoder(nn.Module):
+    def __init__(self, z_dim=5):
+        super(reducedEncoder, self).__init__()
 
-#         self.linear = nn.Linear(z_dim, 256)
-#         self.batch_norm = nn.BatchNorm1d(256)
-#         self.deconv2 = nn.ConvTranspose1d(in_channels=256, out_channels=32, kernel_size=3)
-#         self.deconv1 = nn.ConvTranspose1d(in_channels=32, out_channels=1, kernel_size=3, stride=2, output_padding=1)
-#         self.linear_output = nn.Linear(8, output_dim)
+        self.conv1 = nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3)
+        self.conv2 = nn.Conv1d(in_channels=32, out_channels=16, kernel_size=3)
+        self.batch_norm = nn.BatchNorm1d(16)
+        self.linear1 = nn.Linear(256, 16)
+        self.linear2 = nn.Linear(16, z_dim)
 
-#     def decoder(self, z):
-#         z = F.elu(self.linear(z))
-#         z = z.unsqueeze(-1)
-#         z = self.batch_norm(z)
-#         z = F.elu(self.deconv2(z))
-#         z = F.elu(self.deconv1(z))
-#         z = z.squeeze(1)
-#         z = self.linear_output(z)
-#         return z
+    def encoder(self, x):
+        x = x.unsqueeze(1)
+        x = F.elu(self.conv1(x))
+        x = F.elu(self.conv2(x))
+        x = self.batch_norm(x)
+        x = x.view(x.size(0), -1)
+        x = F.elu(self.linear1(x))
+        x = F.elu(self.linear2(x))
+        return x
 
-#     def forward(self, z):
-#         return self.decoder(z)
+    def forward(self, x):
+        return self.encoder(x)
 
 
-# # 2-step multi fidelity version of SVDKL_AE
-# class MF_SVDKL_AE_2step(gpytorch.Module):
+# Reduced one-dimensional decoder for the 2-step model
+class reducedDecoder(nn.Module):
+    def __init__(self, z_dim=5, output_dim=20):
+        super(reducedDecoder, self).__init__()
+
+        self.linear = nn.Linear(z_dim, 256)
+        self.batch_norm = nn.BatchNorm1d(256)
+        self.deconv2 = nn.ConvTranspose1d(
+            in_channels=256, out_channels=32, kernel_size=3
+        )
+        self.deconv1 = nn.ConvTranspose1d(
+            in_channels=32, out_channels=1, kernel_size=3, stride=2, output_padding=1
+        )
+        self.linear_output = nn.Linear(8, output_dim)
+
+    def decoder(self, z):
+        z = F.elu(self.linear(z))
+        z = z.unsqueeze(-1)
+        z = self.batch_norm(z)
+        z = F.elu(self.deconv2(z))
+        z = F.elu(self.deconv1(z))
+        z = z.squeeze(1)
+        z = self.linear_output(z)
+        return z
+
+    def forward(self, z):
+        return self.decoder(z)
+
+
+# 2-step multi fidelity version of SVDKL_AE
+class MF_SVDKL_AE_2step(gpytorch.Module):
     def __init__(
         self,
         num_dim,
@@ -354,8 +362,12 @@ class SVDKL_AE(gpytorch.Module):
         self.ID = 20
 
         # Step 1: reduce the dimensionality of both the level of fidelity
-        self.LF_ae0 = SVDKL_AE(num_dim, likelihood, grid_bounds, hidden_dim, grid_size, out_dim[0])
-        self.HF_ae1 = SVDKL_AE(num_dim, likelihood, grid_bounds, hidden_dim, grid_size, out_dim[1])
+        self.LF_ae0 = SVDKL_AE(
+            num_dim, likelihood, grid_bounds, hidden_dim, grid_size, out_dim[0]
+        )
+        self.HF_ae1 = SVDKL_AE(
+            num_dim, likelihood, grid_bounds, hidden_dim, grid_size, out_dim[1]
+        )
 
     def forward(self, x_LF, x_HF):
         # Step 1: reduce the dimensionality of both the level of fidelity

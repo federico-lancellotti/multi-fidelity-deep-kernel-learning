@@ -112,19 +112,15 @@ def main():
     # Set how to save the model
     now = datetime.now()
     date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    save_pth_dir = (
-        directory
-        + "/Results/"
-        + str(exp)
-        + "/LF/"
-        + str(mtype)
-    )
+    save_pth_dir = directory + "/Results/" + str(exp) + str(mtype) + "/LF/"
     if not os.path.exists(save_pth_dir):
         os.makedirs(save_pth_dir)
 
     # Preprocessing of the data
     z_LF = np.zeros((N[0], latent_dim))
-    train_loader_LF = DataLoader(data[0], z_LF, obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3))
+    train_loader_LF = DataLoader(
+        data[0], z_LF, obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3)
+    )
 
     # Training
     if training:
@@ -146,21 +142,26 @@ def main():
                         "likelihood": model_LF.likelihood.state_dict(),
                     },
                     save_pth_dir
-                    + "/DKL_Model_LF_"
-                    + str(obs_dim_1[1])
+                    + "/MFDKL_LF_"
+                    + str(obs_dim_1[0])
                     + "_"
                     + date_string
                     + ".pth",
                 )
 
         torch.save(
-            {"model": model_LF.state_dict(), "likelihood": model_LF.likelihood.state_dict()},
-            save_pth_dir + "/MFDKL_LF_" + str(obs_dim_1[0]) + "-" + "_" 
-                                     + str(obs_dim_1[1]) + "-" + "_"
-                                     + date_string + ".pth",
+            {
+                "model": model_LF.state_dict(),
+                "likelihood": model_LF.likelihood.state_dict(),
+            },
+            save_pth_dir
+            + "/MFDKL_LF_"
+            + str(obs_dim_1[0])
+            + "_"
+            + date_string
+            + ".pth",
         )
 
-    
     #####################
     ### high fidelity ###
     #####################
@@ -198,13 +199,7 @@ def main():
     # Set how to save the model
     now = datetime.now()
     date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    save_pth_dir = (
-        directory
-        + "/Results/"
-        + str(exp)
-        + "/HF/"
-        + str(mtype)
-    )
+    save_pth_dir = directory + "/Results/" + str(exp) + str(mtype) + "/HF/" 
     if not os.path.exists(save_pth_dir):
         os.makedirs(save_pth_dir)
 
@@ -213,7 +208,9 @@ def main():
     pred_data = torch.from_numpy(pred_data).permute(0, 3, 1, 2)
     _, _, _, _, _, z_LF = model_LF(pred_data, z_LF)
     z_LF = z_LF.detach().numpy()
-    train_loader_HF = DataLoader(data[1], z_LF, obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3)) 
+    train_loader_HF = DataLoader(
+        data[1], z_LF, obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3)
+    )
 
     # Training
     if training:
@@ -235,7 +232,9 @@ def main():
                         "likelihood": model_HF.likelihood.state_dict(),
                     },
                     save_pth_dir
-                    + "/DKL_Model_HF_"
+                    + "/MFDKL_HF_"
+                    + str(obs_dim_1[0])
+                    + "-"
                     + str(obs_dim_1[1])
                     + "_"
                     + date_string
@@ -243,10 +242,18 @@ def main():
                 )
 
         torch.save(
-            {"model": model_HF.state_dict(), "likelihood": model_HF.likelihood.state_dict()},
-            save_pth_dir + "/MFDKL_HF_" + str(obs_dim_1[0]) + "-" + "_" 
-                                     + str(obs_dim_1[1]) + "-" + "_"
-                                     + date_string + ".pth",
+            {
+                "model": model_HF.state_dict(),
+                "likelihood": model_HF.likelihood.state_dict(),
+            },
+            save_pth_dir
+            + "/MFDKL_HF_"
+            + str(obs_dim_1[0])
+            + "-"
+            + str(obs_dim_1[1])
+            + "_"
+            + date_string
+            + ".pth",
         )
 
 
