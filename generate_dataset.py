@@ -2,6 +2,7 @@ import numpy as np
 import os
 import gymnasium as gym
 import yaml
+import matplotlib.pyplot as plt
 
 from logger import Logger
 from utils import stack_frames
@@ -16,84 +17,147 @@ filterwarnings(
 )
 
 
-def generate_dataset(test):
-    # Config inputs
-    with open("config.yaml", "r") as file:
-        args = yaml.safe_load(file)
+class GenerateDataset:
+    def __init__(self, levels=2, test=False, png=False):
+        super(GenerateDataset, self).__init__()
 
-    env_name = args["env_name"]
-    if test:
-        data_file_name = ["pendulum_test_0.pkl", "pendulum_test_1.pkl"]
-        print("Generating test set...")
-    else:
-        data_file_name = ["pendulum_train_0.pkl", "pendulum_train_1.pkl"]
-        print("Generating training set...")
-    frame_dim1 = args["obs_dim_1"]
-    frame_dim2 = args["obs_dim_2"]
-    num_episodes = args["num_episodes"]
-    seed = args["seed"]
+        self.levels = levels
+        # Config inputs
+        with open("config.yaml", "r") as file:
+            args = yaml.safe_load(file)
 
-    # Set Gym environment
-    env = gym.make(env_name, g=9.81, render_mode="rgb_array")
+        self.env_name = args["env_name"]
+        if test:
+            self.data_filename = [f"pendulum_test_{i}.pkl" for i in range(self.levels)]
+            print("Generating test set...")
+        else:
+            self.data_file_name = [
+                f"pendulum_train_{i}.pkl" for i in range(self.levels)
+            ]
+            print("Generating training set...")
 
-    # Set seeds
-    env.reset(
-        seed=seed
-    )  # it should be enough to set 'np.random.seed(seed)', but just in cases...
-    env.action_space.seed(seed)
-    np.random.seed(seed)
+        self.frame_dim1 = args["obs_dim_1"]
+        self.frame_dim2 = args["obs_dim_2"]
+        self.num_episodes = args["num_episodes"]
+        self.max_steps = 200  # Pendulum-v1 episode truncates at 200 time steps.
+        self.seed = args["seed"]
 
-    # Set logger
-    directory = os.path.dirname(os.path.abspath(__file__))
-    folder = os.path.join(directory + "/Data/")
-    logger = [Logger(folder), Logger(folder)]
+        self.set_environment()
 
-    max_step = 200  # Pendulum-v1 episode truncates at 200 time steps.
-    action = np.array([0.0])  # null action
+        # Set logger
+        directory = os.path.dirname(os.path.abspath(__file__))
+        self.folder = os.path.join(directory + "/Data/")
+        self.png_folder = os.path.join(self.folder + "png/")
+        self.logger = [Logger(self.folder) for i in range(levels)]
 
-    for episode in range(num_episodes[0]):
-        state = (
-            env.reset()
-        )  # reset the environment with new (random) initial conditions
-        frame = np.array(env.render())  # renders the frame
+    # Generate and set the Gymnasium environment
+    def set_environment(self):
+        # Set Gym environment
+        self.env = gym.make(self.env_name, g=9.81, render_mode="rgb_array")
 
-        print("Episode: ", episode)
-        for step_index in range(0, max_step):
-            prev_frame = frame
+        # Set seeds
+        self.env.reset(seed=self.seed)
+        self.env.action_space.seed(self.seed)
 
-            # Render new frame
-            observation, reward, terminated, truncated, info = env.step(
-                action
-            )  # run one timestep of the environment’s dynamics using the agent actions
-            frame = np.array(env.render())
+    # Generate the dataset, frame by frame.
+    def generate_dataset(self):
+        np.random.seed(self.seed)
+        action = np.array([0.0])  # null action
 
-            # Stack and log two consecutive frames
-            obs0 = stack_frames(
-                prev_frame=prev_frame,
-                frame=frame,
-                size1=frame_dim1[0],
-                size2=frame_dim2[0],
+        for episode in range(self.num_episodes[0]):
+            # Reset the environment with new (random) initial conditions
+            # and render the first frames.
+            state = self.env.reset()
+            frame0 = np.array(self.env.render())
+            frame1 = np.array(self.env.render())
+
+            print("Episode: ", episode)
+            for step_index in range(self.max_steps):
+                obs = self.new_obs(frame0, frame1)
+
+                # Render new frame
+                # run one timestep of the environment’s dynamics using the agent actions
+                next_state, _, terminated, _, _ = self.env.step(action)
+                frame2 = np.array(self.env.render())
+                next_obs = self.new_obs(frame1, frame2)
+
+                if step_index == self.max_steps - 1:
+                    terminated = True
+
+                # Log the observations
+                self.log_obs(episode, obs, next_obs, terminated)
+                
+                # Print png
+                if self.png:
+                    frame_name = self.png_folder + str(episode) + "_" + str(step_index)
+                    self.save_image(frame1, frame_name, show=False)
+
+                # Prepare the next iteration
+                frame0 = frame1
+                frame1 = frame2
+                state = next_state
+        
+        # Save the dataset
+        self.save_log()
+
+        # Close the Gym environment
+        self.env.close()
+        print("Done.")
+
+    # Produce the new observation, stacking two consecutive frames.
+    def new_obs(self, frame1, frame2):
+        obs = []
+
+        for l in range(self.levels):
+            obs_l = stack_frames(
+                prev_frame=frame1,
+                frame=frame2,
+                size1=self.frame_dim1[l],
+                size2=self.frame_dim2[l],
             )
-            logger[0].obslog((obs0, terminated))
+            obs = [obs, obs_l]
 
-            if episode < num_episodes[1]:
-                obs1 = stack_frames(
-                    prev_frame=prev_frame,
-                    frame=frame,
-                    size1=frame_dim1[1],
-                    size2=frame_dim2[1],
-                )
-                logger[1].obslog((obs1, terminated))
+        return obs
 
-    # Save the dataset
-    logger[0].save_obslog(filename=data_file_name[0])
-    logger[1].save_obslog(filename=data_file_name[1])
+    # Log the observation in the logger, as a tuple with the current frame, 
+    # the next one and the terminated status.
+    def log_obs(self, episode, obs, next_obs, terminated):
+        self.logger[0].obslog((obs[0], next_obs[0], terminated))
 
-    # Close the Gym environment
-    env.close()
-    print("Done.")
+        for l in range(1, self.levels):
+            if episode < self.num_episodes[l]:
+                self.logger[l].obslog((obs[l], next_obs[l], terminated))
+
+    # Save locally the complete log as file.
+    def save_log(self):
+        # Save the dataset
+        for l in range(self.levels):
+            self.logger[l].save_obslog(filename=self.data_filename[l])
+
+    # Save locally the frame as png.
+    def save_image(self, frame, filename, show=False):
+        # Print the frame as image with Matplotlib
+        plt.imshow(frame)
+        plt.axis('off')  # hide the axis
+
+        # Save the image locally
+        filename = filename + ".png"
+        plt.savefig(filename)  # Specifica il percorso e il nome del file
+
+        # Show the image (if show==1)
+        if show:
+            plt.show()
 
 
 if __name__ == "__main__":
-    generate_dataset(test=0)
-    generate_dataset(test=1)
+    with open("config.yaml", "r") as file:
+        args = yaml.safe_load(file)
+    levels = len(args["training_dataset"])
+
+    # Training set
+    train_set = GenerateDataset(levels=levels, test=False, png=False)
+    train_set.generate_dataset()
+
+    # Test set
+    test_set = GenerateDataset(levels=levels, test=True, png=False)
+    test_set.generate_dataset()
