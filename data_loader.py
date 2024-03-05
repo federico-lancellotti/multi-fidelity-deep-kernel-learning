@@ -31,6 +31,7 @@ class DataLoader:
 
         return batch, batch_z_LF
 
-    # Returns a np.array with all the samples
+    # Returns a np.array with all the samples and the latent representation 
+    # of the l-1 fidelity level.
     def get_all_samples(self):
         return np.array(self.obs), self.z_LF

@@ -5,10 +5,12 @@ import gpytorch
 import gc
 
 from models import SVDKL_AE
+from models import SVDKL_AE_2step
 from logger import Logger
 from utils import load_pickle
 from trainer import train
 from data_loader import DataLoader
+from intrinsic_dimension import eval_id
 
 from datetime import datetime
 
@@ -166,8 +168,16 @@ def main():
     ### high fidelity ###
     #####################
 
+    # Low fidelity output
+    pred_data, z_LF = train_loader_LF.get_all_samples()
+    pred_data = torch.from_numpy(pred_data).permute(0, 3, 1, 2)
+    _, _, _, _, _, z_LF = model_LF(pred_data, z_LF)
+    z_LF = z_LF[0:N[1]].detach().numpy()
+    # z_LF = np.zeros((N[1], latent_dim))
+    ID = int(np.ceil(eval_id(z_LF)))
+
     # Model initialization
-    model_HF = SVDKL_AE(
+    model_HF = SVDKL_AE_2step(
         num_dim=latent_dim,
         likelihood=likelihood,
         grid_bounds=(-10.0, 10.0),
@@ -175,6 +185,7 @@ def main():
         grid_size=grid_size,
         obs_dim=84,
         rho=rho,
+        ID=ID,
     )
 
     if use_gpu:
@@ -188,9 +199,11 @@ def main():
     # Use the adam optimizer
     optimizer = torch.optim.Adam(
         [
-            {"params": model_HF.encoder.parameters()},
-            {"params": model_HF.decoder.parameters()},
+            {"params": model_HF.ext_encoder.parameters()},
+            {"params": model_HF.ext_decoder.parameters()},
             {"params": model_HF.gp_layer.hyperparameters(), "lr": lr_gp},
+            {"params": model_HF.int_encoder.parameters()},
+            {"params": model_HF.int_decoder.parameters()},
         ],
         lr=lr,
         weight_decay=reg_coef,
@@ -204,10 +217,6 @@ def main():
         os.makedirs(save_pth_dir)
 
     # Preprocessing of the data
-    pred_data, z_LF = train_loader_LF.get_all_samples()[0:200]
-    pred_data = torch.from_numpy(pred_data).permute(0, 3, 1, 2)
-    _, _, _, _, _, z_LF = model_LF(pred_data, z_LF)
-    z_LF = z_LF.detach().numpy()
     train_loader_HF = DataLoader(
         data[1], z_LF, obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3)
     )
