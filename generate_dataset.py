@@ -115,18 +115,18 @@ class GenerateDataset:
                 size1=self.frame_dim1[l],
                 size2=self.frame_dim2[l],
             )
-            obs = [obs, obs_l]
+            obs.append(obs_l)
 
         return obs
 
     # Log the observation in the logger, as a tuple with the current frame,
     # the next one and the terminated status.
     def log_obs(self, episode, obs, next_obs, terminated):
-        self.logger[0].obslog((obs[0], next_obs[0], terminated))
+        self.logger[0].obslog(dict(obs=obs[0], next_obs=next_obs[0], terminated=terminated))
 
         for l in range(1, self.levels):
             if episode < self.num_episodes[l]:
-                self.logger[l].obslog((obs[l], next_obs[l], terminated))
+                self.logger[l].obslog(dict(obs=obs[l], next_obs=next_obs[l], terminated=terminated))
 
     # Save locally the complete log as file.
     def save_log(self):
@@ -142,7 +142,7 @@ class GenerateDataset:
 
         # Save the image locally
         filename = filename + ".png"
-        plt.savefig(filename)  # Specifica il percorso e il nome del file
+        plt.savefig(filename)
 
         # Show the image (if show==1)
         if show:
