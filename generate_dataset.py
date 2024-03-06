@@ -22,6 +22,8 @@ class GenerateDataset:
         super(GenerateDataset, self).__init__()
 
         self.levels = levels
+        self.png = png
+
         # Config inputs
         with open("config.yaml", "r") as file:
             args = yaml.safe_load(file)
@@ -31,9 +33,7 @@ class GenerateDataset:
             self.data_filename = [f"pendulum_test_{i}.pkl" for i in range(self.levels)]
             print("Generating test set...")
         else:
-            self.data_file_name = [
-                f"pendulum_train_{i}.pkl" for i in range(self.levels)
-            ]
+            self.data_filename = [f"pendulum_train_{i}.pkl" for i in range(self.levels)]
             print("Generating training set...")
 
         self.frame_dim1 = args["obs_dim_1"]
@@ -86,7 +86,7 @@ class GenerateDataset:
 
                 # Log the observations
                 self.log_obs(episode, obs, next_obs, terminated)
-                
+
                 # Print png
                 if self.png:
                     frame_name = self.png_folder + str(episode) + "_" + str(step_index)
@@ -96,7 +96,7 @@ class GenerateDataset:
                 frame0 = frame1
                 frame1 = frame2
                 state = next_state
-        
+
         # Save the dataset
         self.save_log()
 
@@ -119,7 +119,7 @@ class GenerateDataset:
 
         return obs
 
-    # Log the observation in the logger, as a tuple with the current frame, 
+    # Log the observation in the logger, as a tuple with the current frame,
     # the next one and the terminated status.
     def log_obs(self, episode, obs, next_obs, terminated):
         self.logger[0].obslog((obs[0], next_obs[0], terminated))
@@ -138,7 +138,7 @@ class GenerateDataset:
     def save_image(self, frame, filename, show=False):
         # Print the frame as image with Matplotlib
         plt.imshow(frame)
-        plt.axis('off')  # hide the axis
+        plt.axis("off")  # hide the axis
 
         # Save the image locally
         filename = filename + ".png"
