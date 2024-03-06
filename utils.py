@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
-import cv2
-
+#import cv2
+from PIL import Image
 
 # Saves and loads the data as a pickle file
 def save_pickle(filename, data):
@@ -21,8 +21,8 @@ def load_pickle(file):
 
 # Concatenates two consecutive frames along the channel dimension
 def stack_frames(prev_frame, frame, size1=84, size2=84):
-    prev_frame = cv2.resize(prev_frame, (size1, size2))
-    frame = cv2.resize(frame, (size1, size2))
+    prev_frame = np.array(Image.fromarray(prev_frame).resize((size1, size2)))
+    frame = np.array(Image.fromarray(frame).resize((size1, size2)))
     stacked_frames = np.concatenate((prev_frame, frame), axis=-1)
     return stacked_frames
 
