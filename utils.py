@@ -2,6 +2,8 @@ import numpy as np
 import pickle
 #import cv2
 from PIL import Image
+import matplotlib.pyplot as plt
+
 
 # Saves and loads the data as a pickle file
 def save_pickle(filename, data):
@@ -32,3 +34,17 @@ def sample_batch(data, batch_size=32):
     idxs = np.random.randint(0, len(data), batch_size)
     batch = [data[i] for i in idxs]
     return np.array(batch)
+
+# Plots a frame
+def plot_frame(frame, show=False, filename=""):
+    plt.imshow(frame)
+    plt.axis("off")  # hide the axis
+
+    # Print to screen
+    if show:
+        plt.show()
+
+    # Save the image locally
+    if filename:
+        filename = filename + ".png"
+        plt.savefig(filename)
