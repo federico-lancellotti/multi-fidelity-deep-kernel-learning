@@ -174,3 +174,6 @@ Results/
 
 # Visual Studio Code
 .vscode/
+
+# Old files
+generate_dataset_old.py
