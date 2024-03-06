@@ -172,9 +172,11 @@ def main():
     pred_data, z_LF = train_loader_LF.get_all_samples()
     pred_data = torch.from_numpy(pred_data).permute(0, 3, 1, 2)
     _, _, _, _, _, z_LF = model_LF(pred_data, z_LF)
-    z_LF = z_LF[0:N[1]].detach().numpy()
+    z_LF = z_LF[0 : N[1]].detach().numpy()
     # z_LF = np.zeros((N[1], latent_dim))
-    ID = int(np.ceil(eval_id(z_LF)))
+    ID = eval_id(z_LF)
+    print("ID = ", ID, " ===> ID = ", int(round(ID)))
+    ID = int(round(ID))
 
     # Model initialization
     model_HF = SVDKL_AE_2step(
@@ -246,6 +248,9 @@ def main():
                     + "-"
                     + str(obs_dim_1[1])
                     + "_"
+                    + "ID="
+                    + str(ID)
+                    + "_"
                     + date_string
                     + ".pth",
                 )
@@ -261,9 +266,15 @@ def main():
             + "-"
             + str(obs_dim_1[1])
             + "_"
+            + "ID="
+            + str(ID)
+            + "_"
             + date_string
             + ".pth",
         )
+
+    print("##############################################")
+    print("ID = ", ID)
 
 
 if __name__ == "__main__":
