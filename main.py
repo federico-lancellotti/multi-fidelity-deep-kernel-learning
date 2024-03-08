@@ -226,11 +226,16 @@ def main():
     #####################
 
     # Low fidelity output
+    model_LF.eval()
+    model_LF.AE_DKL.likelihood.eval()
+    model_LF.fwd_model_DKL.likelihood.eval()    
+
     pred_samples = train_loader_LF.get_all_samples()
     pred_samples["obs"] = torch.from_numpy(pred_samples["obs"]).permute(0, 3, 1, 2)
     pred_samples["next_obs"] = torch.from_numpy(pred_samples["next_obs"]).permute(
         0, 3, 1, 2
     )
+
     _, _, _, _, z_LF, _, _, _, z_next_LF, _, _, _, _, z_fwd_LF = model_LF(
         pred_samples["obs"],
         pred_samples["z_LF"],
@@ -240,7 +245,7 @@ def main():
     )
     z_LF = z_LF[0 : N[1]].detach().numpy()
     z_next_LF = z_next_LF[0 : N[1]].detach().numpy()
-    z_fwd_LF = np.zeros((N[1], latent_dim))
+    z_fwd_LF = z_fwd_LF[0 : N[1]].detach().numpy()
 
     # ID estimation
     ID_0 = eval_id(z_LF)
