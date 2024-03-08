@@ -4,7 +4,8 @@ import yaml
 import os
 import numpy as np
 
-from models import SVDKL_AE
+from models import SVDKL_AE, SVDKL_AE_2step
+from models import SVDKL_AE_latent_dyn
 from utils import load_pickle
 from data_loader import DataLoader
 import matplotlib.pyplot as plt
@@ -18,8 +19,7 @@ def test():
     latent_dim = args["latent_dim"]
     h_dim = args["h_dim"]
     grid_size = args["grid_size"]
-    test_set = args["training_dataset"]
-    # test_set = args["testing_dataset"]
+    test_set = args["testing_dataset"]
     obs_dim_1 = args["obs_dim_1"]
     obs_dim_2 = args["obs_dim_2"]
     obs_dim_3 = args["obs_dim_3"]
@@ -30,27 +30,40 @@ def test():
     likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
         latent_dim, rank=0, has_task_noise=True, has_global_noise=False
     )
+    likelihood_fwd = gpytorch.likelihoods.MultitaskGaussianLikelihood(
+        latent_dim, rank=0, has_task_noise=True, has_global_noise=False
+    )
 
     # Set models
-    model_LF = SVDKL_AE(
+    model_LF = SVDKL_AE_latent_dyn(
         num_dim=latent_dim,
         likelihood=likelihood,
+        likelihood_fwd=likelihood_fwd,
         grid_bounds=(-10.0, 10.0),
-        hidden_dim=h_dim,
+        h_dim=h_dim,
         grid_size=grid_size,
         obs_dim=42,
         rho=rho,
     )
 
-    model_HF = SVDKL_AE(
+    model_LF.eval()
+    model_LF.AE_DKL.likelihood.eval()
+    model_LF.fwd_model_DKL.likelihood.eval()
+
+    model_HF = SVDKL_AE_latent_dyn(
         num_dim=latent_dim,
         likelihood=likelihood,
+        likelihood_fwd=likelihood_fwd,
         grid_bounds=(-10.0, 10.0),
-        hidden_dim=h_dim,
+        h_dim=h_dim,
         grid_size=grid_size,
         obs_dim=84,
         rho=rho,
     )
+
+    model_HF.eval()
+    model_HF.AE_DKL.likelihood.eval()
+    model_HF.fwd_model_DKL.likelihood.eval()
 
     # Load data
     directory = os.path.dirname(os.path.abspath(__file__))
@@ -75,60 +88,77 @@ def test():
     ## Low fidelity
     model_LF.load_state_dict(torch.load(weights_folder[0])["model"])
     likelihood.load_state_dict(torch.load(weights_folder[0])["likelihood"])
+    likelihood_fwd.load_state_dict(torch.load(weights_folder[0])["likelihood_fwd"])
 
     z_LF = np.zeros((N[0], latent_dim))
+    z_next_LF = np.zeros((N[0], latent_dim))
+    z_fwd_LF = np.zeros((N[0], latent_dim))
     data_loader_LF = DataLoader(
-        data[0], z_LF, obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3)
+        data[0], z_LF, z_next_LF, z_fwd_LF, obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3)
     )
 
-    input_data_LF, z_LF = data_loader_LF.get_all_samples()
-    input_data_LF = torch.from_numpy(input_data_LF).permute(0, 3, 1, 2)
+    input_data_LF = data_loader_LF.get_all_samples()
+    input_data_LF["obs"] = torch.from_numpy(input_data_LF["obs"]).permute(0, 3, 1, 2)
+    input_data_LF["next_obs"] = torch.from_numpy(input_data_LF["next_obs"]).permute(0, 3, 1, 2)
 
-    mu_hat, _, _, _, _, z_LF = model_LF(input_data_LF, z_LF)
-    z_LF = z_LF.detach().numpy()
+    mu_x, _, _, _, z_LF, _, mu_next, _, z_next_LF, _, _, _, _, z_fwd_LF = model_LF(input_data_LF["obs"],
+                                                                                    input_data_LF["z_LF"],
+                                                                                    input_data_LF["next_obs"],
+                                                                                    input_data_LF["z_next_LF"],
+                                                                                    input_data_LF["z_fwd_LF"],
+                                                                                    )
+    z_LF = z_LF[:N[1], :].detach().numpy()
+    z_next_LF = z_next_LF[:N[1], :].detach().numpy()
+    z_fwd_LF = z_fwd_LF[:N[1], :].detach().numpy()
 
     # High fidelity
     model_HF.load_state_dict(torch.load(weights_folder[1])["model"])
     likelihood.load_state_dict(torch.load(weights_folder[1])["likelihood"])
+    likelihood_fwd.load_state_dict(torch.load(weights_folder[1])["likelihood_fwd"])
 
     data_loader_HF = DataLoader(
-        data[1], z_LF[1], obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3)
+        data[1], z_LF, z_next_LF, z_fwd_LF, obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3)
     )
 
-    input_data_HF, z_LF = data_loader_HF.get_all_samples()
-    input_data_HF = torch.from_numpy(input_data_HF).permute(0, 3, 1, 2)
+    input_data_HF = data_loader_HF.get_all_samples()
+    input_data_HF["obs"] = torch.from_numpy(input_data_HF["obs"]).permute(0, 3, 1, 2)
+    input_data_HF["next_obs"] = torch.from_numpy(input_data_HF["next_obs"]).permute(0, 3, 1, 2)
 
-    #z_LF = np.zeros((N[1], latent_dim))
-    _, var_hat, res, mean, covar, z = model_HF(input_data_HF, z_LF)
+    mu_x, _, _, _, _, _, mu_next, _, _, _, _, _, _, _ = model_HF(input_data_HF["obs"],
+                                                                input_data_HF["z_LF"],
+                                                                input_data_HF["next_obs"],
+                                                                input_data_HF["z_next_LF"],
+                                                                input_data_HF["z_fwd_LF"],
+                                                                )
 
     # Convert to png
-    input_data, _ = data_loader_LF.get_all_samples()
-    mu_hat = mu_hat.permute(0, 3, 2, 1)  # move color channel to the end
-    mu_hat = mu_hat.detach().numpy()  # pass to numpy framework
+    input_data = data_loader_HF.get_all_samples()["obs"]
+    mu_x = mu_x.permute(0, 3, 2, 1)  # move color channel to the end
+    mu_x = mu_x.detach().numpy()  # pass to numpy framework
     filepath = directory + "/Results/Pendulum/DKL/plots/" + weights_filename[1] + "/"
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 
-    l = 0
+    l = 1
     for i in np.random.randint(N[l], size=50):
     #for i in range(50):
-        frame1 = np.zeros((obs_dim_1[l], obs_dim_2[l]*2, 3), dtype=np.float32)
-        frame1[:, :obs_dim_2[l], :] = input_data[i, :, :, 0:3] 
-        frame11 = mu_hat[i, :, :, 0:3]
-        #frame1[:, obs_dim_2[l]:, :] = np.rot90(np.flipud(frame11), k=-1) # ruotata????
-        frame1[:, obs_dim_2[l]:, :] = frame11
-        filename1 = filepath + str(i) + str("_1") + ".png"
-        plt.imshow(frame1)
-        plt.savefig(filename1, format="png")
+        mu_x_rec, _, _, _ = model_HF.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), 
+                                                           z_fwd_LF[i])
+        mu_x_rec = mu_x_rec.permute(0, 3, 2, 1) # move color channel to the end
+        mu_x_rec = mu_x_rec.detach().numpy() # pass to numpy framework
 
-        frame2 = np.zeros((obs_dim_1[l], obs_dim_2[l]*2, 3), dtype=np.float32)
-        frame2[:, :obs_dim_2[l], :] = input_data[i, :, :, 3:6] 
-        frame21 = mu_hat[i, :, :, 3:6]
-        #frame2[:, obs_dim_2[l]:, :] = np.rot90(np.flipud(frame21), k=-1) # ruotata????
-        frame2[:, obs_dim_2[l]:, :] = frame21
-        filename2 = filepath + str(i) + str("_2") + ".png"
-        plt.imshow(frame2)
-        plt.savefig(filename2, format="png")
+        frame0 = input_data[i, :, :, 0:3] 
+        frame1 = mu_x[i, :, :, 0:3]
+        frame2 = mu_x_rec[:, :, :, 0:3]    
+        
+        frame = np.zeros((obs_dim_1[l], obs_dim_2[l]*3, 3), dtype=np.float32)
+        frame[:, :obs_dim_2[l], :] = frame0
+        frame[:, obs_dim_2[l]:2*obs_dim_2[l], :] = frame1
+        frame[:, 2*obs_dim_2[l]:, :] = frame2
+
+        plt.imshow(frame)
+        filename = filepath + str(i) + ".png"
+        plt.savefig(filename, format="png")
 
 
 if __name__ == "__main__":
