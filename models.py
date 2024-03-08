@@ -182,7 +182,10 @@ class SVDKL_AE(gpytorch.Module):
         )
 
     def forward(self, x, z_LF):
-        features = self.encoder(x)
+        # trasform the numpy array for compatibility
+        z_LF = torch.tensor(z_LF.astype(np.float32))  
+
+        features = self.encoder(x) + self.rho*z_LF
         features = self.scale_to_bounds(features)
         features = features.transpose(-1, -2).unsqueeze(
             -1
@@ -198,10 +201,7 @@ class SVDKL_AE(gpytorch.Module):
 
         mean = res.mean
         covar = res.variance
-        z_LF = torch.tensor(
-            z_LF.astype(np.float32)
-        )  # trasform the numpy array for compatibility
-        z = self.likelihood(res).rsample() + self.rho*z_LF
+        z = self.likelihood(res).rsample()
 
         mu_hat, var_hat = self.decoder.decoder(z)
 
@@ -221,7 +221,7 @@ class SVDKL_AE_2step(gpytorch.Module):
         grid_size=32,
         obs_dim=84,
         rho=1,
-        ID=4,
+        ID=0,
     ):
         super(SVDKL_AE_2step, self).__init__()
         self.num_dim = num_dim
@@ -234,16 +234,21 @@ class SVDKL_AE_2step(gpytorch.Module):
         self.gp_layer = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
         self.ext_encoder = Encoder(hidden_dim, self.num_dim, self.out_dim)
         self.ext_decoder = Decoder(self.num_dim, self.out_dim)
-        self.int_encoder = nn.Sequential(
-            nn.Linear(self.num_dim, 16),
-            nn.ReLU(),
-            nn.Linear(16, self.ID)
-        )
-        self.int_decoder = nn.Sequential(
-            nn.Linear(self.ID, 16),
-            nn.ReLU(),
-            nn.Linear(16, self.num_dim)
-        )
+        
+        if self.ID:
+            self.int_encoder = nn.Sequential(
+                nn.Linear(self.num_dim, 16),
+                nn.ReLU(),
+                nn.Linear(16, self.ID)
+            )
+            self.int_decoder = nn.Sequential(
+                nn.Linear(self.ID, 16),
+                nn.ReLU(),
+                nn.Linear(16, self.num_dim)
+            )
+        else:
+            self.int_encoder = None
+            self.int_decoder = None
 
         # This module will scale the NN features so that they're nice values
         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(
@@ -272,9 +277,105 @@ class SVDKL_AE_2step(gpytorch.Module):
         )  # trasform the numpy array for compatibility
         z = self.likelihood(res).rsample() + self.rho*z_LF
 
-        y = self.int_encoder(z)
-        z_hat = self.int_decoder(y) 
+        # Use the internal autoencoder only if ID is properly defined
+        if self.ID:
+            y = self.int_encoder(z)
+            z = self.int_decoder(y)
+        else:
+            y = z 
 
-        mu_hat, var_hat = self.ext_decoder.decoder(z_hat)
+        mu_hat, var_hat = self.ext_decoder.decoder(z)
 
         return mu_hat, var_hat, res, mean, covar, y
+
+
+################################
+##### Reconstruction model #####
+################################
+    
+class SVDKL_AE_latent_dyn(nn.Module):
+    def __init__(self, num_dim, likelihood, likelihood_fwd, grid_bounds=(-10., 10.), h_dim=32, grid_size=32, obs_dim=84, rho=1):
+        super(SVDKL_AE_latent_dyn, self).__init__()
+
+        self.obs_dim = obs_dim
+
+        self.AE_DKL = SVDKL_AE(num_dim=num_dim, likelihood=likelihood, grid_bounds=grid_bounds, hidden_dim=h_dim, 
+                               grid_size=grid_size, obs_dim=obs_dim, rho=rho)
+        self.fwd_model_DKL = Forward_DKLModel(num_dim=num_dim, grid_bounds=grid_bounds, h_dim=h_dim,
+                                              grid_size=grid_size, likelihood=likelihood_fwd, rho=rho)  # DKL forward model
+
+    def forward(self, x, z_LF, x_next, z_next_LF, z_fwd_LF):
+        mu_x, var_x, res, mu, var, z = self.AE_DKL(x, z_LF)
+        mu_x_target, var_x_target, res_target, mu_target, var_target, z_target = self.AE_DKL(x_next, z_next_LF)
+        res_fwd, mu_fwd, var_fwd, z_fwd = self.fwd_model_DKL(z, z_fwd_LF)
+        return mu_x, var_x, mu, var, z, res, mu_target, var_target, z_target, res_target, mu_fwd, var_fwd, res_fwd, z_fwd
+
+    def predict_dynamics(self, z, z_fwd_LF, samples=1):
+        res_fwd, mu_fwd, var_fwd, z_fwd = self.fwd_model_DKL(z, z_fwd_LF)
+        if samples == 1:
+            mu_x_rec, _ = self.AE_DKL.decoder(z_fwd)
+        else:
+            mu_x_recs = torch.zeros((samples, 6, self.obs_dim, self.obs_dim))
+            z_fwd = self.fwd_model_DKL.likelihood(res_fwd).sample(sample_shape=torch.Size([samples]))
+            for i in range(z_fwd.shape[0]):
+                mu_x_recs[i], _ = self.AE_DKL.decoder(z_fwd[i])
+            mu_x_rec = mu_x_recs.mean(0)
+            z_fwd = z_fwd.mean(0)
+        return mu_x_rec, z_fwd, mu_fwd, res_fwd
+
+    def predict_dynamics_mean(self, mu, z_fwd_LF):
+        res_fwd, mu_fwd, var_fwd, z_fwd = self.fwd_model_DKL(mu, z_fwd_LF)
+        mu_x_rec, _ = self.AE_DKL.decoder(mu_fwd)
+        return mu_x_rec, z_fwd, mu_fwd, res_fwd
+    
+
+class Forward_DKLModel(gpytorch.Module):
+    def __init__(self, num_dim, likelihood, grid_bounds=(-10., 10.), h_dim=256, grid_size=32, rho=1):
+        super(Forward_DKLModel, self).__init__()
+        self.gp_layer_2 = GaussianProcessLayer(num_dim=num_dim, grid_bounds=grid_bounds, grid_size=grid_size)
+        self.grid_bounds = grid_bounds
+        self.num_dim = num_dim
+        self.likelihood = likelihood
+        self.rho = rho
+
+        self.fwd_model = ForwardModel(num_dim, h_dim) # NN model
+
+        # This module will scale the NN features so that they're nice values
+        self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(self.grid_bounds[0], self.grid_bounds[1])
+
+    def forward(self, x, z_LF):
+        # trasform the numpy array for compatibility
+        z_LF = torch.tensor(z_LF.astype(np.float32))  
+        
+        features = self.fwd_model(x) + self.rho*z_LF
+        features = self.scale_to_bounds(features)
+        # This next line makes it so that we learn a GP for each feature
+        features = features.transpose(-1, -2).unsqueeze(-1)
+        if self.training:
+            with gpytorch.settings.detach_test_caches(False):
+                self.gp_layer_2.train()
+                self.gp_layer_2.eval()
+                res = self.gp_layer_2(features)
+        else:
+            res = self.gp_layer_2(features)
+        mean = res.mean
+        var = res.variance
+        z = self.likelihood(res).rsample()
+        return res, mean, var, z
+    
+
+class ForwardModel(nn.Module):
+    def __init__(self, z_dim=20, h_dim=256):
+        super(ForwardModel, self).__init__()
+
+        self.fc = nn.Linear(z_dim, h_dim)
+        self.fc1 = nn.Linear(h_dim, h_dim)
+        self.fc2 = nn.Linear(h_dim, z_dim)
+
+        self.batch = nn.BatchNorm1d(z_dim)
+
+    def forward(self, z):
+        z = F.elu(self.fc(z))
+        z = F.elu(self.fc1(z))
+        features = self.fc2(z)
+        return features
