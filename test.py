@@ -140,8 +140,10 @@ def test():
         os.makedirs(filepath)
 
     l = 1
-    for i in np.random.randint(N[l], size=50):
-    #for i in range(50):
+    #for i in np.random.randint(N[l], size=50):
+    start = 200*np.random.randint(0,4) + np.random.randint(0,149)
+    end = start + 50
+    for i in range(start,end):
         mu_x_rec, _, _, _ = model_HF.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), 
                                                            z_fwd_LF[i])
         mu_x_rec = mu_x_rec.permute(0, 3, 2, 1) # move color channel to the end
