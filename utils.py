@@ -29,6 +29,52 @@ def stack_frames(prev_frame, frame, size1=84, size2=84):
     return stacked_frames
 
 
+# Crops a frame. The function returns a new frame which is the
+# portion% corner of the original frame, with coordinates:
+#  - pos=1: top-right corner
+#  - pos=2: top-left corner
+#  - pos=3: bottom-left corner
+#  - pos=4: bottom-right corner
+def crop_frame(frame, portion=0.75, pos=1):
+    size = frame.shape
+    newsize = (portion * np.array(size)).astype(int)
+
+    if pos==1:
+        return frame[:newsize[0], size[1]-newsize[1]:, :]
+    elif pos==2:
+        return frame[:newsize[0], :newsize[1], :]
+    elif pos==3:
+        return frame[size[0]-newsize[0]:, :newsize[1], :]
+    elif pos==4:
+        return frame[size[0]-newsize[0]:, size[1]-newsize[1]:, :]
+    else:
+        print("Wrong choice of pos.")
+        return frame
+
+# Adds a black occlusion to the frame. The function returns 
+# the original frame with a black square imposed to the:
+#  - pos=1: top-right corner
+#  - pos=2: top-left corner
+#  - pos=3: bottom-left corner
+#  - pos=4: bottom-right corner
+def add_occlusion(frame, portion=0.25, pos=1):
+    size = frame.shape
+    newsize = (portion * np.array(size)).astype(int)
+
+    if pos==1:
+        frame[:newsize[0], size[1]-newsize[1]:, :] = .0
+    elif pos==2:
+        frame[:newsize[0], :newsize[1], :] = .0
+    elif pos==3:
+        frame[size[0]-newsize[0]:, :newsize[1], :] = .0
+    elif pos==4:
+        frame[size[0]-newsize[0]:, size[1]-newsize[1]:, :] = .0
+    else:
+        print("Wrong choice of pos.")
+
+    return frame
+
+
 # Returns a np.array random batch of dimension batch_size
 def sample_batch(data, batch_size=32):
     idxs = np.random.randint(0, len(data), batch_size)
