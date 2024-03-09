@@ -125,10 +125,7 @@ def main():
             {"params": model_LF.AE_DKL.decoder.parameters()},
             {"params": model_LF.fwd_model_DKL.fwd_model.parameters()},
             {"params": model_LF.AE_DKL.gp_layer.hyperparameters(), "lr": lr_gp},
-            {
-                "params": model_LF.fwd_model_DKL.gp_layer_2.hyperparameters(),
-                "lr": lr_gp,
-            },
+            {"params": model_LF.fwd_model_DKL.gp_layer_2.hyperparameters(), "lr": lr_gp},
             {"params": model_LF.AE_DKL.likelihood.parameters(), "lr": lr_gp_lik},
             {"params": model_LF.fwd_model_DKL.likelihood.parameters(), "lr": lr_gp_lik},
         ],
@@ -161,9 +158,9 @@ def main():
         os.makedirs(save_pth_dir)
 
     # Preprocessing of the data
-    z_LF = np.zeros((N[0], latent_dim))
-    z_next_LF = np.zeros((N[0], latent_dim))
-    z_fwd_LF = np.zeros((N[0], latent_dim))
+    z_LF = torch.zeros((N[0], latent_dim))
+    z_next_LF = torch.zeros((N[0], latent_dim))
+    z_fwd_LF = torch.zeros((N[0], latent_dim))
     train_loader_LF = DataLoader(
         data[0],
         z_LF,
@@ -196,7 +193,7 @@ def main():
                 torch.save(
                     {
                         "model": model_LF.state_dict(),
-                        "likelihood": model_LF.likelihood.state_dict(),
+                        "likelihood": model_LF.AE_DKL.likelihood.state_dict(),
                         "likelihood_fwd": model_LF.fwd_model_DKL.likelihood.state_dict(),
                     },
                     save_pth_dir
@@ -231,10 +228,8 @@ def main():
     model_LF.fwd_model_DKL.likelihood.eval()    
 
     pred_samples = train_loader_LF.get_all_samples()
-    pred_samples["obs"] = torch.from_numpy(pred_samples["obs"]).permute(0, 3, 1, 2)
-    pred_samples["next_obs"] = torch.from_numpy(pred_samples["next_obs"]).permute(
-        0, 3, 1, 2
-    )
+    pred_samples["obs"] = pred_samples["obs"].permute(0, 3, 1, 2)
+    pred_samples["next_obs"] = pred_samples["next_obs"].permute(0, 3, 1, 2)
 
     _, _, _, _, z_LF, _, _, _, z_next_LF, _, _, _, _, z_fwd_LF = model_LF(
         pred_samples["obs"],
@@ -243,9 +238,9 @@ def main():
         pred_samples["z_next_LF"],
         pred_samples["z_fwd_LF"],
     )
-    z_LF = z_LF[0 : N[1]].detach().numpy()
-    z_next_LF = z_next_LF[0 : N[1]].detach().numpy()
-    z_fwd_LF = z_fwd_LF[0 : N[1]].detach().numpy()
+    z_LF = z_LF[0 : N[1]].detach()
+    z_next_LF = z_next_LF[0 : N[1]].detach()
+    z_fwd_LF = z_fwd_LF[0 : N[1]].detach()
 
     # ID estimation
     ID_0 = eval_id(z_LF)
@@ -278,7 +273,7 @@ def main():
 
     variational_kl_term = VariationalKL(
         model_HF.AE_DKL.likelihood, model_HF.AE_DKL.gp_layer, num_data=batch_size
-    )  # len(data)
+    )
     variational_kl_term_fwd = VariationalKL(
         model_HF.fwd_model_DKL.likelihood,
         model_HF.fwd_model_DKL.gp_layer_2,

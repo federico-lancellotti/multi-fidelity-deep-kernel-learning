@@ -182,9 +182,6 @@ class SVDKL_AE(gpytorch.Module):
         )
 
     def forward(self, x, z_LF):
-        # trasform the numpy array for compatibility
-        z_LF = torch.tensor(z_LF.astype(np.float32))  
-
         features = self.encoder(x) + self.rho*z_LF
         features = self.scale_to_bounds(features)
         features = features.transpose(-1, -2).unsqueeze(
@@ -344,9 +341,6 @@ class Forward_DKLModel(gpytorch.Module):
         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(self.grid_bounds[0], self.grid_bounds[1])
 
     def forward(self, x, z_LF):
-        # trasform the numpy array for compatibility
-        z_LF = torch.tensor(z_LF.astype(np.float32))  
-        
         features = self.fwd_model(x) + self.rho*z_LF
         features = self.scale_to_bounds(features)
         # This next line makes it so that we learn a GP for each feature
