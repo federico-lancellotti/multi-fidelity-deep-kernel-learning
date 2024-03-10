@@ -90,16 +90,16 @@ def test():
     likelihood.load_state_dict(torch.load(weights_folder[0])["likelihood"])
     likelihood_fwd.load_state_dict(torch.load(weights_folder[0])["likelihood_fwd"])
 
-    z_LF = np.zeros((N[0], latent_dim))
-    z_next_LF = np.zeros((N[0], latent_dim))
-    z_fwd_LF = np.zeros((N[0], latent_dim))
+    z_LF = torch.zeros((N[0], latent_dim))
+    z_next_LF = torch.zeros((N[0], latent_dim))
+    z_fwd_LF = torch.zeros((N[0], latent_dim))
     data_loader_LF = DataLoader(
         data[0], z_LF, z_next_LF, z_fwd_LF, obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3)
     )
 
     input_data_LF = data_loader_LF.get_all_samples()
-    input_data_LF["obs"] = torch.from_numpy(input_data_LF["obs"]).permute(0, 3, 1, 2)
-    input_data_LF["next_obs"] = torch.from_numpy(input_data_LF["next_obs"]).permute(0, 3, 1, 2)
+    input_data_LF["obs"] = input_data_LF["obs"].permute(0, 3, 1, 2)
+    input_data_LF["next_obs"] = input_data_LF["next_obs"].permute(0, 3, 1, 2)
 
     mu_x, _, _, _, z_LF, _, mu_next, _, z_next_LF, _, _, _, _, z_fwd_LF = model_LF(input_data_LF["obs"],
                                                                                     input_data_LF["z_LF"],
@@ -107,9 +107,9 @@ def test():
                                                                                     input_data_LF["z_next_LF"],
                                                                                     input_data_LF["z_fwd_LF"],
                                                                                     )
-    z_LF = z_LF[:N[1], :].detach().numpy()
-    z_next_LF = z_next_LF[:N[1], :].detach().numpy()
-    z_fwd_LF = z_fwd_LF[:N[1], :].detach().numpy()
+    z_LF = z_LF[:N[1], :].detach()
+    z_next_LF = z_next_LF[:N[1], :].detach()
+    z_fwd_LF = z_fwd_LF[:N[1], :].detach()
 
     # High fidelity
     model_HF.load_state_dict(torch.load(weights_folder[1])["model"])
@@ -121,8 +121,8 @@ def test():
     )
 
     input_data_HF = data_loader_HF.get_all_samples()
-    input_data_HF["obs"] = torch.from_numpy(input_data_HF["obs"]).permute(0, 3, 1, 2)
-    input_data_HF["next_obs"] = torch.from_numpy(input_data_HF["next_obs"]).permute(0, 3, 1, 2)
+    input_data_HF["obs"] = input_data_HF["obs"].permute(0, 3, 1, 2)
+    input_data_HF["next_obs"] = input_data_HF["next_obs"].permute(0, 3, 1, 2)
 
     mu_x, _, _, _, _, _, mu_next, _, _, _, _, _, _, _ = model_HF(input_data_HF["obs"],
                                                                 input_data_HF["z_LF"],
