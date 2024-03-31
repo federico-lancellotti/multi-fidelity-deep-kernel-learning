@@ -22,7 +22,15 @@ def load_pickle(file):
 
 
 # Concatenates two consecutive frames along the channel dimension
-def stack_frames(prev_frame, frame, size1=84, size2=84):
+def stack_frames(prev_frame, frame, size1=84, size2=84, crop={'portion':1, 'pos':1}, occlusion={'portion':0, 'pos':1}):
+    if crop['portion'] < 1 and crop['portion'] >= 0:
+        prev_frame = crop_frame(prev_frame, crop['portion'], crop['pos'])
+        frame = crop_frame(frame, crop['portion'], crop['pos'])
+
+    if occlusion['portion'] > 0 and occlusion['portion'] <= 1:
+        prev_frame = add_occlusion(prev_frame, occlusion['portion'], occlusion['pos'])
+        frame = add_occlusion(frame, occlusion['portion'], occlusion['pos'])
+    
     prev_frame = np.array(Image.fromarray(prev_frame).resize((size1, size2)))
     frame = np.array(Image.fromarray(frame).resize((size1, size2)))
     stacked_frames = np.concatenate((prev_frame, frame), axis=-1)
@@ -86,11 +94,42 @@ def plot_frame(frame, show=False, filename=""):
     plt.imshow(frame)
     plt.axis("off")  # hide the axis
 
-    # Print to screen
-    if show:
-        plt.show()
-
     # Save the image locally
     if filename:
         filename = filename + ".png"
         plt.savefig(filename)
+
+    # Print to screen
+    if show:
+        plt.show()
+
+    plt.close()
+
+# Plots the latent dimensions as functions of time
+def plot_latent_dims(z, dims=3, T=200, show=False, filename=""):
+    # Loop over each latent dimension
+    for i in range(dims):
+        theta_i = z[:,i] # extract the current dimension (state variable) theta_i
+        plt.figure(figsize=(15, 5))
+
+        # Loop over each episode
+        #for j in range(int(len(theta_i)/T)):
+        for j in range(2):
+            pos = j*200
+            l = T
+            plt.plot(range(l), theta_i[pos:pos+l], linewidth=1.5, alpha=0.7)
+
+        plt.xlabel('t')
+        plt.ylabel('theta_' + str(i+1))
+        plt.title('Latent dimension ' + str(i+1) + '-th')
+        plt.grid(True)
+
+        # Save the image locally
+        if filename:
+            plt.savefig(filename + "x_" + str(i+1) + ".png")
+
+        # Print to screen
+        if show:
+            plt.show()
+        
+        plt.close()
