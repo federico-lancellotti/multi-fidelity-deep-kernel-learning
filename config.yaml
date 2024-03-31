@@ -6,10 +6,12 @@ env_name: "Pendulum-v1"
 # frame_dim1: 84
 # frame_dim2: 84
 num_episodes: {0: 20, 1: 5}   # num_episode per level of fidelity
+crop: [{'portion': 0.6, 'pos': 4}, {'portion': 1, 'pos': 4}]
+occlusion: [{'portion': 0, 'pos': 4}, {'portion': 0, 'pos': 4}]
 
 # training hyperparameters
 batch_size: 50
-max_epoch: 1000
+max_epoch: 500
 
 rho: 1 
 
@@ -48,5 +50,5 @@ log_interval: 50
 jitter: 1e-8
 
 # weights
-weights_filename: ["MFDKL_dyn_LF_42_2024-03-08_20h-02m-50s",
-                   "MFDKL_dyn_HF_42-84_2024-03-08_20h-04m-22s"]
+weights_filename: ["MFDKL_dyn_LF_42_2024-03-30_23h-29m-24s",
+                   "MFDKL_dyn_HF_42-84_2024-03-31_09h-43m-48s"]

@@ -38,6 +38,8 @@ class GenerateDataset:
 
         self.frame_dim1 = args["obs_dim_1"]
         self.frame_dim2 = args["obs_dim_2"]
+        self.crop = args["crop"]
+        self.occlusion = args["occlusion"]
         self.num_episodes = args["num_episodes"]
         self.max_steps = 200  # Pendulum-v1 episode truncates at 200 time steps.
         self.seed = args["seed"]
@@ -114,6 +116,8 @@ class GenerateDataset:
                 frame=frame2,
                 size1=self.frame_dim1[l],
                 size2=self.frame_dim2[l],
+                crop=self.crop[l],
+                occlusion=self.occlusion[l],
             )
             obs.append(obs_l)
 
