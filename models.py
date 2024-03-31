@@ -164,6 +164,7 @@ class SVDKL_AE(gpytorch.Module):
         grid_size=32,
         obs_dim=84,
         rho=1,
+        num_dim_LF=0,
     ):
         super(SVDKL_AE, self).__init__()
         self.num_dim = num_dim
@@ -171,6 +172,7 @@ class SVDKL_AE(gpytorch.Module):
         self.rho = rho
         self.grid_bounds = grid_bounds
         self.likelihood = likelihood
+        self.num_dim_LF = num_dim_LF if num_dim_LF else num_dim
 
         self.gp_layer = GaussianProcessLayer(num_dim, grid_size, grid_bounds)
         self.encoder = Encoder(hidden_dim, self.num_dim, self.out_dim)
@@ -181,7 +183,14 @@ class SVDKL_AE(gpytorch.Module):
             self.grid_bounds[0], self.grid_bounds[1]
         )
 
+        if self.num_dim_LF != self.num_dim:
+            self.fc_LF = nn.Linear(self.num_dim_LF, self.num_dim)
+
+
     def forward(self, x, z_LF):
+        if self.num_dim_LF != self.num_dim:
+            z_LF = self.fc_LF(z_LF)
+
         features = self.encoder(x) + self.rho*z_LF
         features = self.scale_to_bounds(features)
         features = features.transpose(-1, -2).unsqueeze(
@@ -291,15 +300,15 @@ class SVDKL_AE_2step(gpytorch.Module):
 ################################
     
 class SVDKL_AE_latent_dyn(nn.Module):
-    def __init__(self, num_dim, likelihood, likelihood_fwd, grid_bounds=(-10., 10.), h_dim=32, grid_size=32, obs_dim=84, rho=1):
+    def __init__(self, num_dim, likelihood, likelihood_fwd, grid_bounds=(-10., 10.), h_dim=32, grid_size=32, obs_dim=84, rho=1, num_dim_LF=0):
         super(SVDKL_AE_latent_dyn, self).__init__()
 
         self.obs_dim = obs_dim
 
         self.AE_DKL = SVDKL_AE(num_dim=num_dim, likelihood=likelihood, grid_bounds=grid_bounds, hidden_dim=h_dim, 
-                               grid_size=grid_size, obs_dim=obs_dim, rho=rho)
+                               grid_size=grid_size, obs_dim=obs_dim, rho=rho, num_dim_LF=num_dim_LF)
         self.fwd_model_DKL = Forward_DKLModel(num_dim=num_dim, grid_bounds=grid_bounds, h_dim=h_dim,
-                                              grid_size=grid_size, likelihood=likelihood_fwd, rho=rho)  # DKL forward model
+                                              grid_size=grid_size, likelihood=likelihood_fwd, rho=rho, num_dim_LF=num_dim_LF)  # DKL forward model
 
     def forward(self, x, z_LF, x_next, z_next_LF, z_fwd_LF):
         mu_x, var_x, res, mu, var, z = self.AE_DKL(x, z_LF)
@@ -327,20 +336,27 @@ class SVDKL_AE_latent_dyn(nn.Module):
     
 
 class Forward_DKLModel(gpytorch.Module):
-    def __init__(self, num_dim, likelihood, grid_bounds=(-10., 10.), h_dim=256, grid_size=32, rho=1):
+    def __init__(self, num_dim, likelihood, grid_bounds=(-10., 10.), h_dim=256, grid_size=32, rho=1, num_dim_LF=0):
         super(Forward_DKLModel, self).__init__()
         self.gp_layer_2 = GaussianProcessLayer(num_dim=num_dim, grid_bounds=grid_bounds, grid_size=grid_size)
         self.grid_bounds = grid_bounds
         self.num_dim = num_dim
         self.likelihood = likelihood
         self.rho = rho
+        self.num_dim_LF = num_dim_LF if num_dim_LF else num_dim
 
         self.fwd_model = ForwardModel(num_dim, h_dim) # NN model
 
         # This module will scale the NN features so that they're nice values
         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(self.grid_bounds[0], self.grid_bounds[1])
 
+        if self.num_dim_LF != self.num_dim:
+            self.fc_LF = nn.Linear(self.num_dim_LF, self.num_dim)
+
     def forward(self, x, z_LF):
+        if self.num_dim_LF != self.num_dim:
+            z_LF = self.fc_LF(z_LF)
+
         features = self.fwd_model(x) + self.rho*z_LF
         features = self.scale_to_bounds(features)
         # This next line makes it so that we learn a GP for each feature

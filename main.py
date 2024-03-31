@@ -3,6 +3,8 @@ import numpy as np
 import os
 import gpytorch
 import gc
+from datetime import datetime
+import yaml
 
 from models import SVDKL_AE, SVDKL_AE_2step
 from models import SVDKL_AE_latent_dyn
@@ -13,9 +15,6 @@ from trainer import train_dyn as train
 from data_loader import DataLoader
 from intrinsic_dimension import eval_id
 
-from datetime import datetime
-
-import yaml
 
 # for 84x84 inputs
 OUT_DIM = {2: 39, 4: 35, 6: 31}
@@ -243,16 +242,24 @@ def main():
     z_fwd_LF = z_fwd_LF[0 : N[1]].detach()
 
     # ID estimation
-    ID_0 = eval_id(z_LF)
-    ID_1 = eval_id(z_next_LF)
-    ID_fwd = eval_id(z_fwd_LF)
-    print("ID_0=", ID_0, ", ID_1=", ID_1, ", ID_fwd=", ID_fwd)
+    id0 = eval_id(z_LF)
+    id1 = eval_id(z_next_LF)
+    id_fwd = eval_id(z_fwd_LF)
+    print("ID_0=", id0, ", ID_1=", id1, ", ID_fwd=", id_fwd)
     # print("ID = ", ID, " ===> ID = ", int(round(ID)))
-    ID = int(round(ID_0))
+    ID = int(round((id0 + id1)/2 + id_fwd))
+
+    # Likelihood
+    likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
+        ID, rank=0, has_task_noise=True, has_global_noise=False
+    )
+    likelihood_fwd = gpytorch.likelihoods.MultitaskGaussianLikelihood(
+        ID, rank=0, has_task_noise=True, has_global_noise=False
+    )
 
     # Model initialization
     model_HF = SVDKL_AE_latent_dyn(
-        num_dim=latent_dim,
+        num_dim=ID,
         likelihood=likelihood,
         likelihood_fwd=likelihood_fwd,
         grid_bounds=(-10.0, 10.0),
@@ -260,7 +267,7 @@ def main():
         grid_size=grid_size,
         obs_dim=84,
         rho=rho,
-        # ID=ID,
+        num_dim_LF=latent_dim,
     )
 
     if use_gpu:
