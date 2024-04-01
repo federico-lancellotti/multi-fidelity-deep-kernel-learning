@@ -32,3 +32,17 @@ def eval_id(X, k_list=20, n_jobs=4):
         return dims[0]
     else:
         return np.array(dims)
+
+# Estimate ID, given the learnt latent representation at the previous
+# level of fidelity.  
+def estimate_ID(z_LF, z_next_LF, z_fwd_LF):
+    ID_0 = eval_id(z_LF)
+    ID_1 = eval_id(z_next_LF)
+    ID_fwd = eval_id(z_fwd_LF)
+    
+    print("ID_0=", ID_0, ", ID_1=", ID_1, ", ID_fwd=", ID_fwd)
+    # print("ID = ", ID, " ===> ID = ", int(round(ID)))
+    
+    ID = int(round((ID_0 + ID_1)/2 + ID_fwd))
+
+    return ID
