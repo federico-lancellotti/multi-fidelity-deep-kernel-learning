@@ -44,23 +44,35 @@ class BuildModel:
         self.jitter = float(args["jitter"])
 
         # Load data
+        levels = len(self.training_dataset)
         self.directory = os.path.dirname(os.path.abspath(__file__))
 
-        self.folder = [
-            os.path.join(self.directory + "/Data", self.training_dataset[0]),
-            os.path.join(self.directory + "/Data", self.training_dataset[1]),
-        ]
+        self.folder = []
+        for l in range(levels):
+            self.folder.append(os.path.join(self.directory + "/Data", self.training_dataset[l]))
 
-        self.data = [load_pickle(self.folder[0]), load_pickle(self.folder[1])]
-        self.N = [len(self.data[0]), len(self.data[1])]
+        self.data = []
+        self.N = []
+        for l in range(levels):
+            self.data.append(load_pickle(self.folder[l]))
+            self.N.append(len(self.data[l]))
+
+        # Set the string with date-time for the saving folder
+        now = datetime.now()
+        self.folder_date = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
+
+        # Set the folder for saving the results
+        self.save_pth_dir = self.directory + "/Results/" + str(self.exp) + "/" + str(self.mtype) + "/" + self.folder_date + "/"
+        if not os.path.exists(self.save_pth_dir):
+            os.makedirs(self.save_pth_dir)
 
 
     def add_level(self, level, latent_dim, z_LF=None, z_next_LF=None, z_fwd_LF=None, latent_dim_LF=0):
         # Define dummy previous level of fidelity
         if z_LF == None or z_next_LF == None or z_fwd_LF == None or latent_dim_LF == 0:
-            z_LF = torch.zeros((self.N[0], latent_dim))
-            z_next_LF = torch.zeros((self.N[0], latent_dim))
-            z_fwd_LF = torch.zeros((self.N[0], latent_dim))
+            z_LF = torch.zeros((self.N[level], latent_dim))
+            z_next_LF = torch.zeros((self.N[level], latent_dim))
+            z_fwd_LF = torch.zeros((self.N[level], latent_dim))
             latent_dim_LF = latent_dim
 
         # Set likelihood
@@ -79,7 +91,7 @@ class BuildModel:
             grid_bounds=(-10.0, 10.0),
             h_dim=self.h_dim,
             grid_size=self.grid_size,
-            obs_dim=self.obs_dim_1[0],
+            obs_dim=self.obs_dim_1[level],
             rho=self.rho,
             num_dim_LF=latent_dim_LF,
         )
@@ -136,9 +148,6 @@ class BuildModel:
         # Set how to save the model
         now = datetime.now()
         date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-        save_pth_dir = self.directory + "/Results/" + str(self.exp) + "/" + str(self.mtype) + "/" + date_string + "/"
-        if not os.path.exists(save_pth_dir):
-            os.makedirs(save_pth_dir)
 
         # Preprocessing of the data
         train_loader = DataLoader(
@@ -176,7 +185,7 @@ class BuildModel:
                             "likelihood": model.AE_DKL.likelihood.state_dict(),
                             "likelihood_fwd": model.fwd_model_DKL.likelihood.state_dict(),
                         },
-                        save_pth_dir
+                        self.save_pth_dir
                         + "/MFDKL_dyn_level"
                         + str(level)
                         + "_"
@@ -192,7 +201,7 @@ class BuildModel:
                     "likelihood": model.AE_DKL.likelihood.state_dict(),
                     "likelihood_fwd": model.fwd_model_DKL.likelihood.state_dict(),
                 },
-                save_pth_dir
+                self.save_pth_dir
                 + "/MFDKL_dyn_level"
                 + str(level)
                 + "_"

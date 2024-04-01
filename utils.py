@@ -68,19 +68,20 @@ def crop_frame(frame, portion=0.75, pos=1):
 def add_occlusion(frame, portion=0.25, pos=1):
     size = frame.shape
     newsize = (portion * np.array(size)).astype(int)
+    frame_with_occlusion = frame.copy()
 
     if pos==1:
-        frame[:newsize[0], size[1]-newsize[1]:, :] = .0
+        frame_with_occlusion[:newsize[0], size[1]-newsize[1]:, :] = .0
     elif pos==2:
-        frame[:newsize[0], :newsize[1], :] = .0
+        frame_with_occlusion[:newsize[0], :newsize[1], :] = .0
     elif pos==3:
-        frame[size[0]-newsize[0]:, :newsize[1], :] = .0
+        frame_with_occlusion[size[0]-newsize[0]:, :newsize[1], :] = .0
     elif pos==4:
-        frame[size[0]-newsize[0]:, size[1]-newsize[1]:, :] = .0
+        frame_with_occlusion[size[0]-newsize[0]:, size[1]-newsize[1]:, :] = .0
     else:
         print("Wrong choice of pos.")
 
-    return frame
+    return frame_with_occlusion
 
 
 # Returns a np.array random batch of dimension batch_size
