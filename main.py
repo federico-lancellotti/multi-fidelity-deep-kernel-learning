@@ -96,7 +96,7 @@ def main():
         grid_bounds=(-10.0, 10.0),
         h_dim=h_dim,
         grid_size=grid_size,
-        obs_dim=42,
+        obs_dim=obs_dim_1[0],
         rho=rho,
     )
 
@@ -265,7 +265,7 @@ def main():
         grid_bounds=(-10.0, 10.0),
         h_dim=h_dim,
         grid_size=grid_size,
-        obs_dim=84,
+        obs_dim=obs_dim_1[1],
         rho=rho,
         num_dim_LF=latent_dim,
     )
