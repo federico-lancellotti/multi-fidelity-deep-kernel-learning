@@ -1,19 +1,8 @@
 import torch
 import numpy as np
-import os
-import gpytorch
-import gc
-from datetime import datetime
 import yaml
 
-from models import SVDKL_AE, SVDKL_AE_2step
-from models import SVDKL_AE_latent_dyn
-from variational_inference import VariationalKL
-from logger import Logger
-from utils import load_pickle, plot_frame
-from trainer import train_dyn as train
-from data_loader import DataLoader
-from intrinsic_dimension import eval_id
+from intrinsic_dimension import estimate_ID
 from BuildModel import BuildModel
 
 
@@ -46,31 +35,58 @@ def main():
     latent_dim = args['latent_dim']
 
     # Build the model
-    MF_DKL = BuildModel(args)
+    MF_DKL = BuildModel(args, use_gpu=use_gpu)
     N = MF_DKL.N
+
 
     # LEVEL OF FIDELITY: 0
     model_0, train_loader_0 = MF_DKL.add_level(level=0, latent_dim=latent_dim)
     z_0, z_next_0, z_fwd_0 = MF_DKL.eval_level(model_0, train_loader_0)
 
-    z_0 = z_0[0 : N[1]].detach()
-    z_next_0 = z_next_0[0 : N[1]].detach()
-    z_fwd_0 = z_fwd_0[0 : N[1]].detach()
+    z_0 = z_0.detach()
+    z_next_0 = z_next_0.detach()
+    z_fwd_0 = z_fwd_0.detach()
+    ID_0 = estimate_ID(z_0, z_next_0, z_fwd_0)
 
-    # ID estimation
-    ID_0 = eval_id(z_0)
-    ID_1 = eval_id(z_next_0)
-    ID_fwd = eval_id(z_fwd_0)
-    print("ID_0=", ID_0, ", ID_1=", ID_1, ", ID_fwd=", ID_fwd)
-    # print("ID = ", ID, " ===> ID = ", int(round(ID)))
-    ID = int(round((ID_0 + ID_1)/2 + ID_fwd))
 
     # LEVEL OF FIDELITY: 1
-    model_1 = MF_DKL.add_level(level=1, latent_dim=ID, z_LF=z_0, z_next_LF=z_next_0, z_fwd_LF=z_fwd_0, latent_dim_LF=latent_dim)
+    model_1, train_loader_1 = MF_DKL.add_level(level=1, latent_dim=latent_dim)
+    z_1, z_next_1, z_fwd_1 = MF_DKL.eval_level(model_1, train_loader_1)
+
+    z_1 = z_1.detach()
+    z_next_1 = z_next_1.detach()
+    z_fwd_1 = z_fwd_1.detach()
+    ID_1 = estimate_ID(z_1, z_next_1, z_fwd_1)
+
+
+    # LEVEL OF FIDELITY: 2
+    model_2, train_loader_2 = MF_DKL.add_level(level=2, latent_dim=latent_dim)
+    z_2, z_next_2, z_fwd_2 = MF_DKL.eval_level(model_2, train_loader_2)
+
+    z_2 = z_2.detach()
+    z_next_2 = z_next_2.detach()
+    z_fwd_2 = z_fwd_2.detach()
+    ID_2 = estimate_ID(z_2, z_next_2, z_fwd_2)
+
+
+    # Compute a summary of the latent representation and a final estimate of ID
+    z_LF = z_0[0 : N[3]] + z_1[0 : N[3]] + z_2[0 : N[3]]
+    z_next_LF = z_next_0[0 : N[3]] + z_next_1[0 : N[3]] + z_next_2[0 : N[3]]
+    z_fwd_LF = z_fwd_0[0 : N[3]] + z_fwd_1[0 : N[3]] + z_fwd_2[0 : N[3]]
+
+    ID = int((ID_0 + ID_1 + ID_2) / 3) 
+    print("ID = ", ID)
+
+    # LEVEL OF FIDELITY: 3
+    model_3 = MF_DKL.add_level(level=3, latent_dim=ID, z_LF=z_LF, z_next_LF=z_next_LF, z_fwd_LF=z_fwd_LF, latent_dim_LF=latent_dim)
 
     print("##############################################")
     print("ID = ", ID)
 
+    # Save the estimate of ID to file (same folder as the weigths)
+    f = open(MF_DKL.save_pth_dir + "/ID.txt", "a")
+    f.write("ID = " + str(ID))
+    f.close()
 
 if __name__ == "__main__":
     main()
