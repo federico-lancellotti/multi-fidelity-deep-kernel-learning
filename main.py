@@ -14,6 +14,7 @@ from utils import load_pickle, plot_frame
 from trainer import train_dyn as train
 from data_loader import DataLoader
 from intrinsic_dimension import eval_id
+from BuildModel import BuildModel
 
 
 # for 84x84 inputs
@@ -42,352 +43,30 @@ def main():
             torch.mps.manual_seed(seed)
 
     # Set parameters
-    seed = args["seed"]
-    batch_size = args["batch_size"]
-    max_epoch = args["max_epoch"]
-    rho = args["rho"]
-    training = args["training"]
-    lr = float(args["lr"])
-    lr_gp = float(args["lr_gp"])
-    lr_gp_lik = float(args["lr_gp_lik"])
-    lr_gp_var = float(args["lr_gp_var"])
-    reg_coef = float(args["reg_coef"])
-    k1 = float(args["k1"])
-    k2 = float(args["k2"])
-    grid_size = args["grid_size"]
-    latent_dim = args["latent_dim"]
-    obs_dim_1 = args["obs_dim_1"]
-    obs_dim_2 = args["obs_dim_2"]
-    obs_dim_3 = args["obs_dim_3"]
-    h_dim = args["h_dim"]
-    exp = args["exp"]
-    mtype = args["mtype"]
-    training_dataset = args["training_dataset"]
-    log_interval = args["log_interval"]
-    jitter = float(args["jitter"])
+    latent_dim = args['latent_dim']
 
-    # Load data
-    directory = os.path.dirname(os.path.abspath(__file__))
+    # Build the model
+    MF_DKL = BuildModel(args)
+    N = MF_DKL.N
 
-    folder = [
-        os.path.join(directory + "/Data", training_dataset[0]),
-        os.path.join(directory + "/Data", training_dataset[1]),
-    ]
+    # LEVEL OF FIDELITY: 0
+    model_0, train_loader_0 = MF_DKL.add_level(level=0, latent_dim=latent_dim)
+    z_0, z_next_0, z_fwd_0 = MF_DKL.eval_level(model_0, train_loader_0)
 
-    data = [load_pickle(folder[0]), load_pickle(folder[1])]
-    N = [len(data[0]), len(data[1])]
-
-    likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-        latent_dim, rank=0, has_task_noise=True, has_global_noise=False
-    )
-    likelihood_fwd = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-        latent_dim, rank=0, has_task_noise=True, has_global_noise=False
-    )
-
-    ####################
-    ### low fidelity ###
-    ####################
-
-    # Model initialization
-    model_LF = SVDKL_AE_latent_dyn(
-        num_dim=latent_dim,
-        likelihood=likelihood,
-        likelihood_fwd=likelihood_fwd,
-        grid_bounds=(-10.0, 10.0),
-        h_dim=h_dim,
-        grid_size=grid_size,
-        obs_dim=obs_dim_1[0],
-        rho=rho,
-    )
-
-    if use_gpu:
-        if torch.cuda.is_available():
-            model_LF = model_LF.cuda()
-            gc.collect()  # NOTE: Critical to avoid GPU leak
-        elif torch.backends.mps.is_available():  # on Apple Silicon
-            mps_device = torch.device("mps")
-            model_LF.to(mps_device)
-
-    variational_kl_term = VariationalKL(
-        model_LF.AE_DKL.likelihood, model_LF.AE_DKL.gp_layer, num_data=batch_size
-    )  # len(data)
-    variational_kl_term_fwd = VariationalKL(
-        model_LF.fwd_model_DKL.likelihood,
-        model_LF.fwd_model_DKL.gp_layer_2,
-        num_data=batch_size,
-    )
-
-    # Use the adam optimizer
-    optimizer = torch.optim.Adam(
-        [
-            {"params": model_LF.AE_DKL.encoder.parameters()},
-            {"params": model_LF.AE_DKL.decoder.parameters()},
-            {"params": model_LF.fwd_model_DKL.fwd_model.parameters()},
-            {"params": model_LF.AE_DKL.gp_layer.hyperparameters(), "lr": lr_gp},
-            {"params": model_LF.fwd_model_DKL.gp_layer_2.hyperparameters(), "lr": lr_gp},
-            {"params": model_LF.AE_DKL.likelihood.parameters(), "lr": lr_gp_lik},
-            {"params": model_LF.fwd_model_DKL.likelihood.parameters(), "lr": lr_gp_lik},
-        ],
-        lr=lr,
-        weight_decay=reg_coef,
-    )
-
-    optimizer_var1 = torch.optim.SGD([
-        {'params': model_LF.AE_DKL.gp_layer.variational_parameters(), 'lr': lr_gp_var},
-        ], lr=lr_gp_var, momentum=0.9, nesterov=True, weight_decay=0) # momentum=0.9, nesterov=True, weight_decay=0
-    optimizer_var2 = torch.optim.SGD([
-        {'params': model_LF.fwd_model_DKL.gp_layer_2.variational_parameters(), 'lr': lr_gp_var},
-        ], lr=lr_gp_var, momentum=0.9, nesterov=True, weight_decay=0)
-
-    optimizers = [optimizer, optimizer_var1, optimizer_var2]
-
-    # Reduce the learning rate when at 50% and 75% of the training.
-    scheduler_1 = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer_var1, milestones=[0.5 * max_epoch, 0.75 * max_epoch], gamma=0.1
-    )
-    scheduler_2 = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer_var2, milestones=[0.5 * max_epoch, 0.75 * max_epoch], gamma=0.1
-    )
-
-    # Set how to save the model
-    now = datetime.now()
-    date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    save_pth_dir = directory + "/Results/" + str(exp) + "/" + str(mtype) + "/LF/"
-    if not os.path.exists(save_pth_dir):
-        os.makedirs(save_pth_dir)
-
-    # Preprocessing of the data
-    z_LF = torch.zeros((N[0], latent_dim))
-    z_next_LF = torch.zeros((N[0], latent_dim))
-    z_fwd_LF = torch.zeros((N[0], latent_dim))
-    train_loader_LF = DataLoader(
-        data[0],
-        z_LF,
-        z_next_LF,
-        z_fwd_LF,
-        obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3),
-    )
-
-    # Training
-    if training:
-        print("start training...")
-        for epoch in range(1, max_epoch + 1):
-            with gpytorch.settings.cholesky_jitter(jitter):
-                train(
-                    model=model_LF,
-                    train_data=train_loader_LF,
-                    optimizers=optimizers,
-                    batch_size=batch_size,
-                    num_epochs=epoch,
-                    variational_kl_term=variational_kl_term,
-                    variational_kl_term_fwd=variational_kl_term_fwd,
-                    k1=k1,
-                    beta=k2,
-                )
-
-                scheduler_1.step()
-                scheduler_2.step()
-
-            if epoch % log_interval == 0:
-                torch.save(
-                    {
-                        "model": model_LF.state_dict(),
-                        "likelihood": model_LF.AE_DKL.likelihood.state_dict(),
-                        "likelihood_fwd": model_LF.fwd_model_DKL.likelihood.state_dict(),
-                    },
-                    save_pth_dir
-                    + "/MFDKL_dyn_LF_"
-                    + str(obs_dim_1[0])
-                    + "_"
-                    + date_string
-                    + ".pth",
-                )
-
-        torch.save(
-            {
-                "model": model_LF.state_dict(),
-                "likelihood": model_LF.AE_DKL.likelihood.state_dict(),
-                "likelihood_fwd": model_LF.fwd_model_DKL.likelihood.state_dict(),
-            },
-            save_pth_dir
-            + "/MFDKL_dyn_LF_"
-            + str(obs_dim_1[0])
-            + "_"
-            + date_string
-            + ".pth",
-        )
-
-    #####################
-    ### high fidelity ###
-    #####################
-
-    # Low fidelity output
-    model_LF.eval()
-    model_LF.AE_DKL.likelihood.eval()
-    model_LF.fwd_model_DKL.likelihood.eval()    
-
-    pred_samples = train_loader_LF.get_all_samples()
-    pred_samples["obs"] = pred_samples["obs"].permute(0, 3, 1, 2)
-    pred_samples["next_obs"] = pred_samples["next_obs"].permute(0, 3, 1, 2)
-
-    _, _, _, _, z_LF, _, _, _, z_next_LF, _, _, _, _, z_fwd_LF = model_LF(
-        pred_samples["obs"],
-        pred_samples["z_LF"],
-        pred_samples["next_obs"],
-        pred_samples["z_next_LF"],
-        pred_samples["z_fwd_LF"],
-    )
-    z_LF = z_LF[0 : N[1]].detach()
-    z_next_LF = z_next_LF[0 : N[1]].detach()
-    z_fwd_LF = z_fwd_LF[0 : N[1]].detach()
+    z_0 = z_0[0 : N[1]].detach()
+    z_next_0 = z_next_0[0 : N[1]].detach()
+    z_fwd_0 = z_fwd_0[0 : N[1]].detach()
 
     # ID estimation
-    id0 = eval_id(z_LF)
-    id1 = eval_id(z_next_LF)
-    id_fwd = eval_id(z_fwd_LF)
-    print("ID_0=", id0, ", ID_1=", id1, ", ID_fwd=", id_fwd)
+    ID_0 = eval_id(z_0)
+    ID_1 = eval_id(z_next_0)
+    ID_fwd = eval_id(z_fwd_0)
+    print("ID_0=", ID_0, ", ID_1=", ID_1, ", ID_fwd=", ID_fwd)
     # print("ID = ", ID, " ===> ID = ", int(round(ID)))
-    ID = int(round((id0 + id1)/2 + id_fwd))
+    ID = int(round((ID_0 + ID_1)/2 + ID_fwd))
 
-    # Likelihood
-    likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-        ID, rank=0, has_task_noise=True, has_global_noise=False
-    )
-    likelihood_fwd = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-        ID, rank=0, has_task_noise=True, has_global_noise=False
-    )
-
-    # Model initialization
-    model_HF = SVDKL_AE_latent_dyn(
-        num_dim=ID,
-        likelihood=likelihood,
-        likelihood_fwd=likelihood_fwd,
-        grid_bounds=(-10.0, 10.0),
-        h_dim=h_dim,
-        grid_size=grid_size,
-        obs_dim=obs_dim_1[1],
-        rho=rho,
-        num_dim_LF=latent_dim,
-    )
-
-    if use_gpu:
-        if torch.cuda.is_available():
-            model_HF = model_HF.cuda()
-            gc.collect()  # NOTE: Critical to avoid GPU leak
-        elif torch.backends.mps.is_available():  # on Apple Silicon
-            mps_device = torch.device("mps")
-            model_HF.to(mps_device)
-
-    variational_kl_term = VariationalKL(
-        model_HF.AE_DKL.likelihood, model_HF.AE_DKL.gp_layer, num_data=batch_size
-    )
-    variational_kl_term_fwd = VariationalKL(
-        model_HF.fwd_model_DKL.likelihood,
-        model_HF.fwd_model_DKL.gp_layer_2,
-        num_data=batch_size,
-    )
-
-    # Use the adam optimizer
-    optimizer = torch.optim.Adam(
-        [
-            {"params": model_HF.AE_DKL.encoder.parameters()},
-            {"params": model_HF.AE_DKL.decoder.parameters()},
-            {"params": model_HF.fwd_model_DKL.fwd_model.parameters()},
-            {"params": model_HF.AE_DKL.gp_layer.hyperparameters(), "lr": lr_gp},
-            {"params": model_HF.fwd_model_DKL.gp_layer_2.hyperparameters(), "lr": lr_gp},
-            {"params": model_HF.AE_DKL.likelihood.parameters(), "lr": lr_gp_lik},
-            {"params": model_HF.fwd_model_DKL.likelihood.parameters(), "lr": lr_gp_lik},
-        ],
-        lr=lr,
-        weight_decay=reg_coef,
-    )
-
-    optimizer_var1 = torch.optim.SGD([
-        {'params': model_HF.AE_DKL.gp_layer.variational_parameters(), 'lr': lr_gp_var},
-        ], lr=lr_gp_var, momentum=0.9, nesterov=True, weight_decay=0) # momentum=0.9, nesterov=True, weight_decay=0
-    optimizer_var2 = torch.optim.SGD([
-        {'params': model_HF.fwd_model_DKL.gp_layer_2.variational_parameters(), 'lr': lr_gp_var},
-        ], lr=lr_gp_var, momentum=0.9, nesterov=True, weight_decay=0)
-
-    optimizers = [optimizer, optimizer_var1, optimizer_var2]
-
-    # Reduce the learning rate when at 50% and 75% of the training.
-    scheduler_1 = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer_var1, milestones=[0.5 * max_epoch, 0.75 * max_epoch], gamma=0.1
-    )
-    scheduler_2 = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer_var2, milestones=[0.5 * max_epoch, 0.75 * max_epoch], gamma=0.1
-    )
-
-    # Set how to save the model
-    now = datetime.now()
-    date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
-    save_pth_dir = directory + "/Results/" + str(exp) + "/" + str(mtype) + "/HF/"
-    if not os.path.exists(save_pth_dir):
-        os.makedirs(save_pth_dir)
-
-    # Preprocessing of the data
-    train_loader_HF = DataLoader(
-        data[1],
-        z_LF,
-        z_next_LF,
-        z_fwd_LF,
-        obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3),
-    )
-
-    # Training
-    if training:
-        print("start training...")
-        for epoch in range(1, max_epoch + 1):
-            with gpytorch.settings.cholesky_jitter(jitter):
-                train(
-                    model=model_HF,
-                    train_data=train_loader_HF,
-                    optimizers=optimizers,
-                    batch_size=batch_size,
-                    num_epochs=epoch,
-                    variational_kl_term=variational_kl_term,
-                    variational_kl_term_fwd=variational_kl_term_fwd,
-                    k1=k1,
-                    beta=k2,
-                )
-
-            if epoch % log_interval == 0:
-                torch.save(
-                    {
-                        "model": model_HF.state_dict(),
-                        "likelihood": model_HF.AE_DKL.likelihood.state_dict(),
-                        "likelihood_fwd": model_HF.fwd_model_DKL.likelihood.state_dict(),
-                    },
-                    save_pth_dir
-                    + "/MFDKL_dyn_HF_"
-                    + str(obs_dim_1[0])
-                    + "-"
-                    + str(obs_dim_1[1])
-                    + "_"
-                    # + "ID="
-                    # + str(ID)
-                    # + "_"
-                    + date_string + ".pth",
-                )
-
-        torch.save(
-            {
-                "model": model_HF.state_dict(),
-                "likelihood": model_HF.AE_DKL.likelihood.state_dict(),
-                "likelihood_fwd": model_HF.fwd_model_DKL.likelihood.state_dict(),
-            },
-            save_pth_dir
-            + "/MFDKL_dyn_HF_"
-            + str(obs_dim_1[0])
-            + "-"
-            + str(obs_dim_1[1])
-            + "_"
-            # + "ID="
-            # + str(ID)
-            # + "_"
-            + date_string + ".pth",
-        )
+    # LEVEL OF FIDELITY: 1
+    model_1 = MF_DKL.add_level(level=1, latent_dim=ID, z_LF=z_0, z_next_LF=z_next_0, z_fwd_LF=z_fwd_0, latent_dim_LF=latent_dim)
 
     print("##############################################")
     print("ID = ", ID)
