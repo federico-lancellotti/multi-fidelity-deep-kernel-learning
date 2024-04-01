@@ -148,30 +148,30 @@ def test():
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 
-    plot_latent_dims(z_HF.detach().numpy(), show=True, filename=filepath)
+    plot_latent_dims(z_HF.detach().numpy(), show=False, filename=filepath)
 
     l = 1
     #for i in np.random.randint(N[l], size=50):
     start = 200*np.random.randint(0,4) + np.random.randint(0,149)
     end = start + 50
-    # for i in range(start,end):
-    #     mu_x_rec, _, _, _ = model_HF.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), 
-    #                                                        z_fwd_LF[i])
-    #     mu_x_rec = mu_x_rec.permute(0, 3, 2, 1) # move color channel to the end
-    #     mu_x_rec = mu_x_rec.detach().numpy() # pass to numpy framework
+    for i in range(start,end):
+        mu_x_rec, _, _, _ = model_HF.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), 
+                                                           z_fwd_LF[i])
+        mu_x_rec = mu_x_rec.permute(0, 3, 2, 1) # move color channel to the end
+        mu_x_rec = mu_x_rec.detach().numpy() # pass to numpy framework
 
-    #     frame0 = input_data[i, :, :, 0:3] 
-    #     frame1 = mu_x[i, :, :, 0:3]
-    #     frame2 = mu_x_rec[:, :, :, 0:3]    
+        frame0 = input_data[i, :, :, 0:3] 
+        frame1 = mu_x[i, :, :, 0:3]
+        frame2 = mu_x_rec[:, :, :, 0:3]    
         
-    #     frame = np.zeros((obs_dim_1[l], obs_dim_2[l]*3, 3), dtype=np.float32)
-    #     frame[:, :obs_dim_2[l], :] = frame0
-    #     frame[:, obs_dim_2[l]:2*obs_dim_2[l], :] = frame1
-    #     frame[:, 2*obs_dim_2[l]:, :] = frame2
+        frame = np.zeros((obs_dim_1[l], obs_dim_2[l]*3, 3), dtype=np.float32)
+        frame[:, :obs_dim_2[l], :] = frame0
+        frame[:, obs_dim_2[l]:2*obs_dim_2[l], :] = frame1
+        frame[:, 2*obs_dim_2[l]:, :] = frame2
 
-    #     plt.imshow(frame)
-    #     filename = filepath + str(i) + ".png"
-    #     plt.savefig(filename, format="png")
+        plt.imshow(frame)
+        filename = filepath + str(i) + ".png"
+        plt.savefig(filename, format="png")
 
 
 if __name__ == "__main__":
