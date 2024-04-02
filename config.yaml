@@ -11,7 +11,7 @@ occlusion: [{'portion': 0, 'pos': 4}, {'portion': 0, 'pos': 4}, {'portion': 0.45
 
 # training hyperparameters
 batch_size: 50
-max_epoch: 500
+max_epoch: 1000
 
 rho: 1 
 
@@ -41,7 +41,6 @@ out_dim: {128: 57, 84: 35, 64: 25, 42: 14, 24: 5}
 
 # experiment and model type
 exp: "Pendulum"
-mtype: "DKL"
 training_dataset: {0: "pendulum_train_0.pkl", 1: "pendulum_train_1.pkl", 2: "pendulum_train_2.pkl", 3: "pendulum_train_3.pkl"}
 testing_dataset: {0: "pendulum_test_0.pkl", 1: "pendulum_test_1.pkl", 2: "pendulum_test_2.pkl", 3: "pendulum_test_3.pkl"}
 
@@ -50,5 +49,8 @@ log_interval: 50
 jitter: 1e-8
 
 # weights
-weights_filename: ["MFDKL_dyn_LF_42_2024-03-31_21h-10m-58s",
-                   "MFDKL_dyn_HF_42-84_2024-04-01_06h-23m-52s"]
+results_folder: "2024-04-01_21h-42m-07s"
+weights_filename: ["MFDKL_dyn_level0_42_2024-04-01_21h-42m-08s",
+                   "MFDKL_dyn_level1_42_2024-04-02_02h-23m-02s",
+                   "MFDKL_dyn_level2_84_2024-04-02_04h-39m-00s",
+                   "MFDKL_dyn_level3_84_2024-04-02_07h-28m-59s"]

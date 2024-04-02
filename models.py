@@ -304,6 +304,8 @@ class SVDKL_AE_latent_dyn(nn.Module):
         super(SVDKL_AE_latent_dyn, self).__init__()
 
         self.obs_dim = obs_dim
+        self.num_dim = num_dim
+        self.num_dim_LF = num_dim_LF
 
         self.AE_DKL = SVDKL_AE(num_dim=num_dim, likelihood=likelihood, grid_bounds=grid_bounds, hidden_dim=h_dim, 
                                grid_size=grid_size, obs_dim=obs_dim, rho=rho, num_dim_LF=num_dim_LF)

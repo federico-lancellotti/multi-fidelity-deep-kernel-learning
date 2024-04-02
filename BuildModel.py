@@ -16,7 +16,7 @@ from data_loader import DataLoader
 from intrinsic_dimension import eval_id
 
 class BuildModel:
-    def __init__(self, args, use_gpu=False):
+    def __init__(self, args, use_gpu=False, test=False):
         self.use_gpu = use_gpu
         
         # Set parameters
@@ -38,21 +38,29 @@ class BuildModel:
         self.obs_dim_3 = args["obs_dim_3"]
         self.h_dim = args["h_dim"]
         self.exp = args["exp"]
-        self.mtype = args["mtype"]
         self.training_dataset = args["training_dataset"]
         self.log_interval = args["log_interval"]
         self.jitter = float(args["jitter"])
+
+        self.testing_dataset = args["testing_dataset"]
+        self.results_folder = args["results_folder"]
+        self.weights_filename = args["weights_filename"]
 
         # Load data
         levels = len(self.training_dataset)
         self.directory = os.path.dirname(os.path.abspath(__file__))
 
         self.folder = []
-        for l in range(levels):
-            self.folder.append(os.path.join(self.directory + "/Data", self.training_dataset[l]))
-
         self.data = []
         self.N = []
+
+        if test: 
+            for l in range(levels):
+                self.folder.append(os.path.join(self.directory + "/Data", self.testing_dataset[l]))
+        else:
+            for l in range(levels):
+                self.folder.append(os.path.join(self.directory + "/Data", self.training_dataset[l]))
+        
         for l in range(levels):
             self.data.append(load_pickle(self.folder[l]))
             self.N.append(len(self.data[l]))
@@ -62,19 +70,12 @@ class BuildModel:
         self.folder_date = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
 
         # Set the folder for saving the results
-        self.save_pth_dir = self.directory + "/Results/" + str(self.exp) + "/" + str(self.mtype) + "/" + self.folder_date + "/"
+        self.save_pth_dir = self.directory + "/Results/" + str(self.exp) + "/" + self.folder_date + "/"
         if not os.path.exists(self.save_pth_dir):
             os.makedirs(self.save_pth_dir)
 
 
-    def add_level(self, level, latent_dim, z_LF=None, z_next_LF=None, z_fwd_LF=None, latent_dim_LF=0):
-        # Define dummy previous level of fidelity
-        if z_LF == None or z_next_LF == None or z_fwd_LF == None or latent_dim_LF == 0:
-            z_LF = torch.zeros((self.N[level], latent_dim))
-            z_next_LF = torch.zeros((self.N[level], latent_dim))
-            z_fwd_LF = torch.zeros((self.N[level], latent_dim))
-            latent_dim_LF = latent_dim
-
+    def add_level(self, level, latent_dim, latent_dim_LF=0):
         # Set likelihood
         likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
             latent_dim, rank=0, has_task_noise=True, has_global_noise=False
@@ -95,6 +96,18 @@ class BuildModel:
             rho=self.rho,
             num_dim_LF=latent_dim_LF,
         )
+
+        return model
+
+
+    def train_level(self, level, model, z_LF=None, z_next_LF=None, z_fwd_LF=None):
+        latent_dim = model.num_dim
+        
+        # Define dummy previous level of fidelity
+        if z_LF == None or z_next_LF == None or z_fwd_LF == None:
+            z_LF = torch.zeros((self.N[level], latent_dim))
+            z_next_LF = torch.zeros((self.N[level], latent_dim))
+            z_fwd_LF = torch.zeros((self.N[level], latent_dim))
 
         if self.use_gpu:
             if torch.cuda.is_available():
@@ -214,16 +227,45 @@ class BuildModel:
         return model, train_loader
 
 
-    def eval_level(self, model, train_loader):
+    def test_level(self, level, model, z_LF=None, z_next_LF=None, z_fwd_LF=None):
+        # Load data
+        directory = os.path.dirname(os.path.abspath(__file__))
+        data = self.data[level]
+        N = self.N[level]
+
+        # Load weights
+        weights_folder = os.path.join(
+            directory + "/Results/Pendulum/" + self.results_folder + "/", self.weights_filename[level] + ".pth"
+            )
+        
+        model.load_state_dict(torch.load(weights_folder)["model"])
+        model.AE_DKL.likelihood.load_state_dict(torch.load(weights_folder)["likelihood"])
+        model.fwd_model_DKL.likelihood.load_state_dict(torch.load(weights_folder)["likelihood_fwd"])
+
+        # Define dummy previous level of fidelity
+        if z_LF == None or z_next_LF == None or z_fwd_LF == None:
+            latent_dim = model.num_dim
+            z_LF = torch.zeros((N, latent_dim))
+            z_next_LF = torch.zeros((N, latent_dim))
+            z_fwd_LF = torch.zeros((N, latent_dim))
+
+        data_loader = DataLoader(
+            data, z_LF, z_next_LF, z_fwd_LF, obs_dim=(self.obs_dim_1[level], self.obs_dim_2[level], self.obs_dim_3)
+        )
+
+        return model, data_loader
+
+
+    def eval_level(self, model, data_loader):
         model.eval()
         model.AE_DKL.likelihood.eval()
-        model.fwd_model_DKL.likelihood.eval()    
+        model.fwd_model_DKL.likelihood.eval()
 
-        pred_samples = train_loader.get_all_samples()
+        pred_samples = data_loader.get_all_samples()
         pred_samples["obs"] = pred_samples["obs"].permute(0, 3, 1, 2)
         pred_samples["next_obs"] = pred_samples["next_obs"].permute(0, 3, 1, 2)
 
-        _, _, _, _, z, _, _, _, z_next, _, _, _, _, z_fwd = model(
+        mu_x, _, _, _, z, _, mu_next, _, z_next, _, _, _, _, z_fwd = model(
             pred_samples["obs"],
             pred_samples["z_LF"],
             pred_samples["next_obs"],
@@ -231,4 +273,4 @@ class BuildModel:
             pred_samples["z_fwd_LF"],
         )
 
-        return z, z_next, z_fwd
+        return z, z_next, z_fwd, mu_x, mu_next

@@ -1,14 +1,10 @@
-import torch
-import gpytorch
 import yaml
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from models import SVDKL_AE, SVDKL_AE_2step
-from models import SVDKL_AE_latent_dyn
 from utils import load_pickle, plot_latent_dims
-from data_loader import DataLoader
+from BuildModel import BuildModel
 
 
 def test():
@@ -17,145 +13,59 @@ def test():
         args = yaml.safe_load(file)
 
     latent_dim = args["latent_dim"]
-    h_dim = args["h_dim"]
-    grid_size = args["grid_size"]
-    test_set = args["testing_dataset"]
     obs_dim_1 = args["obs_dim_1"]
     obs_dim_2 = args["obs_dim_2"]
-    obs_dim_3 = args["obs_dim_3"]
-    rho = args["rho"]
-    batch_size = args["batch_size"]
+    results_folder = args["results_folder"]
     ID=3
 
-    # Set likelihood
-    likelihood_LF = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-        latent_dim, rank=0, has_task_noise=True, has_global_noise=False
-    )
-    likelihood_fwd_LF = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-        latent_dim, rank=0, has_task_noise=True, has_global_noise=False
-    )
+    MF_DKL = BuildModel(args, test=True)
+    N = MF_DKL.N
 
-    likelihood_HF = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-        ID, rank=0, has_task_noise=True, has_global_noise=False
-    )
-    likelihood_fwd_HF = gpytorch.likelihoods.MultitaskGaussianLikelihood(
-        ID, rank=0, has_task_noise=True, has_global_noise=False
-    )
 
-    # Set models
-    model_LF = SVDKL_AE_latent_dyn(
-        num_dim=latent_dim,
-        likelihood=likelihood_LF,
-        likelihood_fwd=likelihood_fwd_LF,
-        grid_bounds=(-10.0, 10.0),
-        h_dim=h_dim,
-        grid_size=grid_size,
-        obs_dim=42,
-        rho=rho,
-    )
+    model_0 = MF_DKL.add_level(level=0, latent_dim=latent_dim)
+    model_1 = MF_DKL.add_level(level=1, latent_dim=latent_dim)
+    model_2 = MF_DKL.add_level(level=2, latent_dim=latent_dim)
+    model_3 = MF_DKL.add_level(level=3, latent_dim=ID, latent_dim_LF=latent_dim)
 
-    model_LF.eval()
-    model_LF.AE_DKL.likelihood.eval()
-    model_LF.fwd_model_DKL.likelihood.eval()
+    ## Level 0
+    model_0, data_loader_0 = MF_DKL.test_level(level=0, model=model_0)
+    z_0, z_next_0, z_fwd_0, _, _ = MF_DKL.eval_level(model=model_0, data_loader=data_loader_0)
 
-    model_HF = SVDKL_AE_latent_dyn(
-        num_dim=ID,
-        likelihood=likelihood_HF,
-        likelihood_fwd=likelihood_fwd_HF,
-        grid_bounds=(-10.0, 10.0),
-        h_dim=h_dim,
-        grid_size=grid_size,
-        obs_dim=84,
-        rho=rho,
-        num_dim_LF=latent_dim,
-    )
+    ## Level 1
+    model_1, data_loader_1 = MF_DKL.test_level(level=1, model=model_1)
+    z_1, z_next_1, z_fwd_1, _, _ = MF_DKL.eval_level(model=model_1, data_loader=data_loader_1)
 
-    model_HF.eval()
-    model_HF.AE_DKL.likelihood.eval()
-    model_HF.fwd_model_DKL.likelihood.eval()
+    ## Level 2
+    model_2, data_loader_2 = MF_DKL.test_level(level=2, model=model_2)
+    z_2, z_next_2, z_fwd_2, _, _ = MF_DKL.eval_level(model=model_2, data_loader=data_loader_2)
 
-    # Load data
-    directory = os.path.dirname(os.path.abspath(__file__))
-    folder = [
-        os.path.join(directory + "/Data", test_set[0]),
-        os.path.join(directory + "/Data", test_set[1]),
-    ]
-    data = [load_pickle(folder[0]), load_pickle(folder[1])]
-    N = [len(data[0]), len(data[1])]
+    # Level 3
+    z_LF = z_0[0 : N[3]].detach() + z_1[0 : N[3]].detach() + z_2[0 : N[3]].detach()
+    z_next_LF = z_next_0[0 : N[3]].detach() + z_next_1[0 : N[3]].detach() + z_next_2[0 : N[3]].detach()
+    z_fwd_LF = z_fwd_0[0 : N[3]].detach() + z_fwd_1[0 : N[3]].detach() + z_fwd_2[0 : N[3]].detach()
 
-    # Load weights
-    weights_filename = args["weights_filename"]
-    weights_folder = [
-        os.path.join(
-            directory + "/Results/Pendulum/DKL/LF", weights_filename[0] + ".pth"
-        ),
-        os.path.join(
-            directory + "/Results/Pendulum/DKL/HF", weights_filename[1] + ".pth"
-        ),
-    ]
+    model_3, data_loader_3 = MF_DKL.test_level(level=3, model=model_3, z_LF=z_LF, z_next_LF=z_next_LF, z_fwd_LF=z_fwd_LF)
+    z_3, _, _, mu_x, mu_next = MF_DKL.eval_level(model=model_3, data_loader=data_loader_3)
 
-    ## Low fidelity
-    model_LF.load_state_dict(torch.load(weights_folder[0])["model"])
-    likelihood_LF.load_state_dict(torch.load(weights_folder[0])["likelihood"])
-    likelihood_fwd_LF.load_state_dict(torch.load(weights_folder[0])["likelihood_fwd"])
 
-    z_LF = torch.zeros((N[0], latent_dim))
-    z_next_LF = torch.zeros((N[0], latent_dim))
-    z_fwd_LF = torch.zeros((N[0], latent_dim))
-    data_loader_LF = DataLoader(
-        data[0], z_LF, z_next_LF, z_fwd_LF, obs_dim=(obs_dim_1[0], obs_dim_2[0], obs_dim_3)
-    )
-
-    input_data_LF = data_loader_LF.get_all_samples()
-    input_data_LF["obs"] = input_data_LF["obs"].permute(0, 3, 1, 2)
-    input_data_LF["next_obs"] = input_data_LF["next_obs"].permute(0, 3, 1, 2)
-
-    mu_x, _, _, _, z_LF, _, mu_next, _, z_next_LF, _, _, _, _, z_fwd_LF = model_LF(input_data_LF["obs"],
-                                                                                    input_data_LF["z_LF"],
-                                                                                    input_data_LF["next_obs"],
-                                                                                    input_data_LF["z_next_LF"],
-                                                                                    input_data_LF["z_fwd_LF"],
-                                                                                    )
-    z_LF = z_LF[:N[1], :].detach()
-    z_next_LF = z_next_LF[:N[1], :].detach()
-    z_fwd_LF = z_fwd_LF[:N[1], :].detach()
-
-    # High fidelity
-    model_HF.load_state_dict(torch.load(weights_folder[1])["model"])
-    likelihood_HF.load_state_dict(torch.load(weights_folder[1])["likelihood"])
-    likelihood_fwd_HF.load_state_dict(torch.load(weights_folder[1])["likelihood_fwd"])
-
-    data_loader_HF = DataLoader(
-        data[1], z_LF, z_next_LF, z_fwd_LF, obs_dim=(obs_dim_1[1], obs_dim_2[1], obs_dim_3)
-    )
-
-    input_data_HF = data_loader_HF.get_all_samples()
-    input_data_HF["obs"] = input_data_HF["obs"].permute(0, 3, 1, 2)
-    input_data_HF["next_obs"] = input_data_HF["next_obs"].permute(0, 3, 1, 2)
-
-    mu_x, _, _, _, z_HF, _, mu_next, _, _, _, _, _, _, _ = model_HF(input_data_HF["obs"],
-                                                                input_data_HF["z_LF"],
-                                                                input_data_HF["next_obs"],
-                                                                input_data_HF["z_next_LF"],
-                                                                input_data_HF["z_fwd_LF"],
-                                                                )
-
-    # Convert to png
-    input_data = data_loader_HF.get_all_samples()["obs"]
+    # Preprocess reconstruction for the plots
+    input_data = data_loader_3.get_all_samples()["obs"]
     mu_x = mu_x.permute(0, 3, 2, 1)  # move color channel to the end
     mu_x = mu_x.detach().numpy()  # pass to numpy framework
-    filepath = directory + "/Results/Pendulum/DKL/plots/" + weights_filename[1] + "/"
+    filepath = MF_DKL.directory + "/Results/Pendulum/" + results_folder + "/plots/"
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 
-    plot_latent_dims(z_HF.detach().numpy(), show=False, filename=filepath)
+    # Plot of the latent variables
+    plot_latent_dims(z_3.detach().numpy(), dims=3, show=False, filename=filepath)
 
-    l = 1
+    # Plot of the reconstruction
+    l = 3   # level chosen
     #for i in np.random.randint(N[l], size=50):
     start = 200*np.random.randint(0,4) + np.random.randint(0,149)
     end = start + 50
     for i in range(start,end):
-        mu_x_rec, _, _, _ = model_HF.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), 
+        mu_x_rec, _, _, _ = model_3.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), 
                                                            z_fwd_LF[i])
         mu_x_rec = mu_x_rec.permute(0, 3, 2, 1) # move color channel to the end
         mu_x_rec = mu_x_rec.detach().numpy() # pass to numpy framework
