@@ -57,7 +57,7 @@ def test():
         os.makedirs(filepath)
 
     # Plot of the latent variables
-    plot_latent_dims(z_3.detach().numpy(), dims=3, show=False, filename=filepath)
+    plot_latent_dims(z_3.detach().numpy(), dims=ID, episodes=3, show=False, filename=filepath)
 
     # Plot of the reconstruction
     l = 3   # level chosen

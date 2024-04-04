@@ -107,15 +107,15 @@ def plot_frame(frame, show=False, filename=""):
     plt.close()
 
 # Plots the latent dimensions as functions of time
-def plot_latent_dims(z, dims=3, T=200, show=False, filename=""):
+def plot_latent_dims(z, dims=3, T=200, episodes=3, show=False, filename=""):
     # Loop over each latent dimension
     for i in range(dims):
         theta_i = z[:,i] # extract the current dimension (state variable) theta_i
         plt.figure(figsize=(15, 5))
 
         # Loop over each episode
-        #for j in range(int(len(theta_i)/T)):
-        for j in range(2):
+        episodes = min(episodes, int(len(theta_i)/T))
+        for j in range(episodes):
             pos = j*200
             l = T
             plt.plot(range(l), theta_i[pos:pos+l], linewidth=1.5, alpha=0.7)
