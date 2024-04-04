@@ -42,7 +42,7 @@ def main():
     # LEVEL OF FIDELITY: 0
     model_0 = MF_DKL.add_level(level=0, latent_dim=latent_dim)
     model_0, train_loader_0 = MF_DKL.train_level(level=0, model=model_0)
-    z_0, z_next_0, z_fwd_0 = MF_DKL.eval_level(model_0, train_loader_0)
+    z_0, z_next_0, z_fwd_0, _, _ = MF_DKL.eval_level(model_0, train_loader_0)
 
     z_0 = z_0.detach()
     z_next_0 = z_next_0.detach()
@@ -53,7 +53,7 @@ def main():
     # LEVEL OF FIDELITY: 1
     model_1 = MF_DKL.add_level(level=1, latent_dim=latent_dim)
     model_1, train_loader_1 = MF_DKL.train_level(level=1, model=model_1)
-    z_1, z_next_1, z_fwd_1 = MF_DKL.eval_level(model_1, train_loader_1)
+    z_1, z_next_1, z_fwd_1, _, _ = MF_DKL.eval_level(model_1, train_loader_1)
 
     z_1 = z_1.detach()
     z_next_1 = z_next_1.detach()
@@ -64,7 +64,7 @@ def main():
     # LEVEL OF FIDELITY: 2
     model_2 = MF_DKL.add_level(level=2, latent_dim=latent_dim)
     model_2, train_loader_2 = MF_DKL.train_level(level=2, model=model_2)
-    z_2, z_next_2, z_fwd_2 = MF_DKL.eval_level(model_2, train_loader_2)
+    z_2, z_next_2, z_fwd_2, _, _ = MF_DKL.eval_level(model_2, train_loader_2)
 
     z_2 = z_2.detach()
     z_next_2 = z_next_2.detach()
