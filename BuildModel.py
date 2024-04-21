@@ -45,7 +45,6 @@ class BuildModel:
         self.testing_dataset = args["testing_dataset"]
         self.results_folder = args["results_folder"]
         self.weights_filename = args["weights_filename"]
-        self.env_name = args["env_name"].split('-')[0]
 
         # Load data
         levels = len(self.training_dataset)
@@ -72,7 +71,7 @@ class BuildModel:
             self.folder_date = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
 
             # Set the folder for saving the results
-            self.save_pth_dir = self.directory + "/Results/" + str(self.exp) + "/" + self.folder_date + "/"
+            self.save_pth_dir = self.directory + "/Results/" + self.exp + "/" + self.folder_date + "/"
             if not os.path.exists(self.save_pth_dir):
                 os.makedirs(self.save_pth_dir)
 
@@ -237,7 +236,7 @@ class BuildModel:
 
         # Load weights
         weights_folder = os.path.join(
-            directory + "/Results/" + self.env_name + "/" + self.results_folder + "/", self.weights_filename[level] + ".pth"
+            directory + "/Results/" + self.exp + "/" + self.results_folder + "/", self.weights_filename[level] + ".pth"
             )
         
         model.load_state_dict(torch.load(weights_folder)["model"])

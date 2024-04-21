@@ -15,7 +15,7 @@ def test():
     latent_dim = args["latent_dim"]
     obs_dim_1 = args["obs_dim_1"]
     obs_dim_2 = args["obs_dim_2"]
-    env_name = args["env_name"].split('-')[0]
+    exp = args["exp"]
     results_folder = args["results_folder"]
     ID = args["ID"]
 
@@ -53,7 +53,7 @@ def test():
     input_data = data_loader_3.get_all_samples()["obs"]
     mu_x = mu_x.permute(0, 3, 2, 1)  # move color channel to the end
     mu_x = mu_x.detach().numpy()  # pass to numpy framework
-    filepath = MF_DKL.directory + "/Results/" + env_name + "/" + results_folder + "/plots/"
+    filepath = MF_DKL.directory + "/Results/" + exp + "/" + results_folder + "/plots/"
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 
