@@ -84,6 +84,7 @@ def main():
     model_3 = MF_DKL.add_level(level=3, latent_dim=ID, latent_dim_LF=latent_dim)
     model_3 = MF_DKL.train_level(level=3, model=model_3, z_LF=z_LF, z_next_LF=z_next_LF, z_fwd_LF=z_fwd_LF)
 
+
     print("##############################################")
     print("ID = ", ID)
 

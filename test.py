@@ -15,8 +15,9 @@ def test():
     latent_dim = args["latent_dim"]
     obs_dim_1 = args["obs_dim_1"]
     obs_dim_2 = args["obs_dim_2"]
+    env_name = args["env_name"].split('-')[0]
     results_folder = args["results_folder"]
-    ID=3
+    ID = args["ID"]
 
     MF_DKL = BuildModel(args, test=True)
     N = MF_DKL.N
@@ -52,7 +53,7 @@ def test():
     input_data = data_loader_3.get_all_samples()["obs"]
     mu_x = mu_x.permute(0, 3, 2, 1)  # move color channel to the end
     mu_x = mu_x.detach().numpy()  # pass to numpy framework
-    filepath = MF_DKL.directory + "/Results/Pendulum/" + results_folder + "/plots/"
+    filepath = MF_DKL.directory + "/Results/" + env_name + "/" + results_folder + "/plots/"
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 
@@ -65,8 +66,7 @@ def test():
     start = 200*np.random.randint(0,4) + np.random.randint(0,149)
     end = start + 50
     for i in range(start,end):
-        mu_x_rec, _, _, _ = model_3.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), 
-                                                           z_fwd_LF[i])
+        mu_x_rec, _, _, _ = model_3.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), z_fwd_LF[i])
         mu_x_rec = mu_x_rec.permute(0, 3, 2, 1) # move color channel to the end
         mu_x_rec = mu_x_rec.detach().numpy() # pass to numpy framework
 

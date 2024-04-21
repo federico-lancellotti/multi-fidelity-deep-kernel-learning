@@ -30,10 +30,10 @@ class GenerateDataset:
 
         self.env_name = args["env_name"]
         if test:
-            self.data_filename = [f"pendulum_test_{i}.pkl" for i in range(self.levels)]
+            self.data_filename = [f"data_test_{i}.pkl" for i in range(self.levels)]
             print("Generating test set...")
         else:
-            self.data_filename = [f"pendulum_train_{i}.pkl" for i in range(self.levels)]
+            self.data_filename = [f"data_train_{i}.pkl" for i in range(self.levels)]
             print("Generating training set...")
 
         self.frame_dim1 = args["obs_dim_1"]
@@ -41,7 +41,11 @@ class GenerateDataset:
         self.crop = args["crop"]
         self.occlusion = args["occlusion"]
         self.num_episodes = args["num_episodes"]
-        self.max_steps = 200  # Pendulum-v1 episode truncates at 200 time steps.
+
+        if self.env_name == "Pendulum-v1":
+            self.max_steps = 200  # Pendulum-v1 episode truncates at 200 time steps.
+        elif self.env_name == "Acrobot-v1":
+            self.max_steps = 500  # Acrobot-v1 episode truncates at 500 time steps.
         self.seed = args["seed"]
 
         self.set_environment()
@@ -55,7 +59,10 @@ class GenerateDataset:
     # Generate and set the Gymnasium environment
     def set_environment(self):
         # Set Gym environment
-        self.env = gym.make(self.env_name, g=9.81, render_mode="rgb_array")
+        if self.env_name == "Pendulum-v1":
+            self.env = gym.make(self.env_name, g=9.81, render_mode="rgb_array")
+        elif self.env_name == "Acrobot-v1":
+            self.env = gym.make(self.env_name, render_mode="rgb_array")
 
         # Set seeds
         self.env.reset(seed=self.seed)
@@ -64,7 +71,10 @@ class GenerateDataset:
     # Generate the dataset, frame by frame.
     def generate_dataset(self):
         np.random.seed(self.seed)
-        action = np.array([0.0])  # null action
+        if self.env_name == "Pendulum-v1":
+            action = np.array([0.0])  # null action
+        elif self.env_name == "Acrobot-v1":
+            action = 1
 
         for episode in range(self.num_episodes[0]):
             # Reset the environment with new (random) initial conditions

@@ -2,16 +2,14 @@
 seed: 1
 
 # dataset generator
-env_name: "Pendulum-v1"
-# frame_dim1: 84
-# frame_dim2: 84
+env_name: "Acrobot-v1"  #"Pendulum-v1"
 num_episodes: {0: 10, 1: 5, 2: 5, 3: 3}   # num_episode per level of fidelity
 crop: [{'portion': 1, 'pos': 4}, {'portion': 0.6, 'pos': 4}, {'portion': 1, 'pos': 4}, {'portion': 1, 'pos': 4}]
 occlusion: [{'portion': 0, 'pos': 4}, {'portion': 0, 'pos': 4}, {'portion': 0.45, 'pos': 3}, {'portion': 0, 'pos': 4}]
 
 # training hyperparameters
 batch_size: 50
-max_epoch: 1000
+max_epoch: 500
 
 rho: 1 
 
@@ -30,7 +28,7 @@ k2: 0.9  # coefficient-fwd-kl-loss
 grid_size: 32
 
 # build model
-latent_dim: 50
+latent_dim: 20
 act_dim: 1
 state_dim: 3
 obs_dim_1: {0: 42, 1: 42, 2: 84, 3: 84}
@@ -41,16 +39,17 @@ out_dim: {128: 57, 84: 35, 64: 25, 42: 14, 24: 5}
 
 # experiment and model type
 exp: "Pendulum"
-training_dataset: {0: "pendulum_train_0.pkl", 1: "pendulum_train_1.pkl", 2: "pendulum_train_2.pkl", 3: "pendulum_train_3.pkl"}
-testing_dataset: {0: "pendulum_test_0.pkl", 1: "pendulum_test_1.pkl", 2: "pendulum_test_2.pkl", 3: "pendulum_test_3.pkl"}
+training_dataset: {0: "data_train_0.pkl", 1: "data_train_1.pkl", 2: "data_train_2.pkl", 3: "data_train_3.pkl"}
+testing_dataset: {0: "data_test_0.pkl", 1: "data_test_1.pkl", 2: "data_test_2.pkl", 3: "data_test_3.pkl"}
 
 log_interval: 50
 
 jitter: 1e-8
 
 # weights
-results_folder: "2024-04-01_21h-42m-07s"
-weights_filename: ["MFDKL_dyn_level0_42_2024-04-01_21h-42m-08s",
-                   "MFDKL_dyn_level1_42_2024-04-02_02h-23m-02s",
-                   "MFDKL_dyn_level2_84_2024-04-02_04h-39m-00s",
-                   "MFDKL_dyn_level3_84_2024-04-02_07h-28m-59s"]
+results_folder: "2024-04-05_18h-23m-57s"
+weights_filename: ["MFDKL_dyn_level0_42_2024-04-05_18h-23m-59s",
+                  "MFDKL_dyn_level1_42_2024-04-06_01h-01m-00s",
+                  "MFDKL_dyn_level2_84_2024-04-06_04h-28m-33s",
+                  "MFDKL_dyn_level3_84_2024-04-06_09h-30m-21s"]
+ID: 4
