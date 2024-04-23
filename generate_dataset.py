@@ -46,6 +46,8 @@ class GenerateDataset:
             self.max_steps = 200  # Pendulum-v1 episode truncates at 200 time steps.
         elif self.env_name == "Acrobot-v1":
             self.max_steps = 500  # Acrobot-v1 episode truncates at 500 time steps.
+        elif self.env_name == "MountainCarContinuous-v0":
+            self.max_steps = 400  # MountainCarContinuous-v0 episode truncates at 999 time steps.
         self.seed = args["seed"]
 
         self.set_environment()
@@ -63,6 +65,8 @@ class GenerateDataset:
             self.env = gym.make(self.env_name, g=9.81, render_mode="rgb_array")
         elif self.env_name == "Acrobot-v1":
             self.env = gym.make(self.env_name, render_mode="rgb_array")
+        elif self.env_name == "MountainCarContinuous-v0":
+            self.env = gym.make(self.env_name, render_mode="rgb_array")
 
         # Set seeds
         self.env.reset(seed=self.seed)
@@ -74,7 +78,9 @@ class GenerateDataset:
         if self.env_name == "Pendulum-v1":
             action = np.array([0.0])  # null action
         elif self.env_name == "Acrobot-v1":
-            action = 1
+            action = 1  # null action
+        elif self.env_name == "MountainCarContinuous-v0":
+            action = np.array([0.0])  # null action
 
         for episode in range(self.num_episodes[0]):
             # Reset the environment with new (random) initial conditions
