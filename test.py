@@ -51,7 +51,7 @@ def test():
 
     # Preprocess reconstruction for the plots
     input_data = data_loader_3.get_all_samples()["obs"]
-    mu_x = mu_x.permute(0, 3, 2, 1)  # move color channel to the end
+    mu_x = mu_x.permute(0, 2, 3, 1)  # move color channel to the end
     mu_x = mu_x.detach().numpy()  # pass to numpy framework
     filepath = MF_DKL.directory + "/Results/" + exp + "/" + results_folder + "/plots/"
     if not os.path.exists(filepath):
@@ -67,7 +67,7 @@ def test():
     end = start + 50
     for i in range(start,end):
         mu_x_rec, _, _, _ = model_3.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), z_fwd_LF[i])
-        mu_x_rec = mu_x_rec.permute(0, 3, 2, 1) # move color channel to the end
+        mu_x_rec = mu_x_rec.permute(0, 2, 3, 1) # move color channel to the end
         mu_x_rec = mu_x_rec.detach().numpy() # pass to numpy framework
 
         frame0 = input_data[i, :, :, 0:3] 
