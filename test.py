@@ -3,7 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import load_pickle, plot_latent_dims
+from utils import plot_latent_dims
 from BuildModel import BuildModel
 
 
@@ -15,7 +15,7 @@ def test():
     latent_dim = args["latent_dim"]
     obs_dim_1 = args["obs_dim_1"]
     obs_dim_2 = args["obs_dim_2"]
-    exp = args["exp"]
+    env_name = args["env_name"]
     results_folder = args["results_folder"]
     ID = args["ID"]
 
@@ -53,7 +53,7 @@ def test():
     input_data = data_loader_3.get_all_samples()["obs"]
     mu_x = mu_x.permute(0, 2, 3, 1)  # move color channel to the end
     mu_x = mu_x.detach().numpy()  # pass to numpy framework
-    filepath = MF_DKL.directory + "/Results/" + exp + "/" + results_folder + "/plots/"
+    filepath = MF_DKL.directory + "/Results/" + env_name + "/" + results_folder + "/plots/"
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 

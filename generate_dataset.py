@@ -42,11 +42,11 @@ class GenerateDataset:
         self.occlusion = args["occlusion"]
         self.num_episodes = args["num_episodes"]
 
-        if self.env_name == "Pendulum-v1":
+        if self.env_name == "Pendulum":
             self.max_steps = 200  # Pendulum-v1 episode truncates at 200 time steps.
-        elif self.env_name == "Acrobot-v1":
+        elif self.env_name == "Acrobot":
             self.max_steps = 500  # Acrobot-v1 episode truncates at 500 time steps.
-        elif self.env_name == "MountainCarContinuous-v0":
+        elif self.env_name == "MountainCarContinuous":
             self.max_steps = 400  # MountainCarContinuous-v0 episode truncates at 999 time steps.
         self.seed = args["seed"]
 
@@ -61,12 +61,12 @@ class GenerateDataset:
     # Generate and set the Gymnasium environment
     def set_environment(self):
         # Set Gym environment
-        if self.env_name == "Pendulum-v1":
-            self.env = gym.make(self.env_name, g=9.81, render_mode="rgb_array")
-        elif self.env_name == "Acrobot-v1":
-            self.env = gym.make(self.env_name, render_mode="rgb_array")
-        elif self.env_name == "MountainCarContinuous-v0":
-            self.env = gym.make(self.env_name, render_mode="rgb_array")
+        if self.env_name == "Pendulum":
+            self.env = gym.make("Pendulum-v1", g=9.81, render_mode="rgb_array")
+        elif self.env_name == "Acrobot":
+            self.env = gym.make("Acrobot-v1", render_mode="rgb_array")
+        elif self.env_name == "MountainCarContinuous":
+            self.env = gym.make("MountainCarContinuous-v0", render_mode="rgb_array")
 
         # Set seeds
         self.env.reset(seed=self.seed)
@@ -75,11 +75,11 @@ class GenerateDataset:
     # Generate the dataset, frame by frame.
     def generate_dataset(self):
         np.random.seed(self.seed)
-        if self.env_name == "Pendulum-v1":
+        if self.env_name == "Pendulum":
             action = np.array([0.0])  # null action
-        elif self.env_name == "Acrobot-v1":
+        elif self.env_name == "Acrobot":
             action = 1  # null action
-        elif self.env_name == "MountainCarContinuous-v0":
+        elif self.env_name == "MountainCarContinuous":
             action = np.array([0.0])  # null action
 
         for episode in range(self.num_episodes[0]):

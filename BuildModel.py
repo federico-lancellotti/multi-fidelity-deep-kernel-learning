@@ -1,19 +1,14 @@
 import torch
-import numpy as np
 import os
 import gpytorch
 import gc
 from datetime import datetime
-import yaml
 
-from models import SVDKL_AE
 from models import SVDKL_AE_latent_dyn
 from variational_inference import VariationalKL
-from logger import Logger
-from utils import load_pickle, plot_frame
+from utils import load_pickle
 from trainer import train_dyn as train
 from data_loader import DataLoader
-from intrinsic_dimension import eval_id
 
 class BuildModel:
     def __init__(self, args, use_gpu=False, test=False):
@@ -37,7 +32,7 @@ class BuildModel:
         self.obs_dim_2 = args["obs_dim_2"]
         self.obs_dim_3 = args["obs_dim_3"]
         self.h_dim = args["h_dim"]
-        self.exp = args["exp"]
+        self.env_name = args["env_name"]
         self.training_dataset = args["training_dataset"]
         self.log_interval = args["log_interval"]
         self.jitter = float(args["jitter"])
@@ -71,7 +66,7 @@ class BuildModel:
             self.folder_date = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
 
             # Set the folder for saving the results
-            self.save_pth_dir = self.directory + "/Results/" + self.exp + "/" + self.folder_date + "/"
+            self.save_pth_dir = self.directory + "/Results/" + self.env_name + "/" + self.folder_date + "/"
             if not os.path.exists(self.save_pth_dir):
                 os.makedirs(self.save_pth_dir)
 
@@ -236,7 +231,7 @@ class BuildModel:
 
         # Load weights
         weights_folder = os.path.join(
-            directory + "/Results/" + self.exp + "/" + self.results_folder + "/", self.weights_filename[level] + ".pth"
+            directory + "/Results/" + self.env_name + "/" + self.results_folder + "/", self.weights_filename[level] + ".pth"
             )
         
         model.load_state_dict(torch.load(weights_folder)["model"])

@@ -2,7 +2,7 @@
 seed: 1
 
 # dataset generator
-env_name: "MountainCarContinuous-v0"  # Available: Pendulum-v1, Acrobot-v1, MountainCarContinuous-v0
+env_name: "Acrobot"  # Available: Pendulum-v1, Acrobot-v1, MountainCarContinuous-v0
 num_episodes: {0: 10, 1: 5, 2: 5, 3: 3}   # num_episode per level of fidelity
 crop: [{'portion': 1, 'pos': 4}, {'portion': 0.6, 'pos': 4}, {'portion': 1, 'pos': 4}, {'portion': 1, 'pos': 4}]
 occlusion: [{'portion': 0, 'pos': 4}, {'portion': 0, 'pos': 4}, {'portion': 0.45, 'pos': 3}, {'portion': 0, 'pos': 4}]
@@ -38,7 +38,7 @@ h_dim: 256
 out_dim: {128: 57, 84: 35, 64: 25, 42: 14, 24: 5}
 
 # experiment and model type
-exp: "MountainCarContinuous"
+# exp: "Acrobot"
 training_dataset: {0: "data_train_0.pkl", 1: "data_train_1.pkl", 2: "data_train_2.pkl", 3: "data_train_3.pkl"}
 testing_dataset: {0: "data_test_0.pkl", 1: "data_test_1.pkl", 2: "data_test_2.pkl", 3: "data_test_3.pkl"}
 
@@ -53,3 +53,5 @@ weights_filename: ["MFDKL_dyn_level0_42_2024-04-21_16h-27m-04s",
                   "MFDKL_dyn_level2_84_2024-04-22_06h-24m-23s",
                   "MFDKL_dyn_level3_84_2024-04-22_21h-32m-05s"]
 ID: 5
+
+
