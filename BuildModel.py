@@ -6,7 +6,7 @@ import gc
 from datetime import datetime
 import yaml
 
-from models import SVDKL_AE, SVDKL_AE_2step
+from models import SVDKL_AE
 from models import SVDKL_AE_latent_dyn
 from variational_inference import VariationalKL
 from logger import Logger
