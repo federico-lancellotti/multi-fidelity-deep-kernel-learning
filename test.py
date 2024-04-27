@@ -51,14 +51,22 @@ def test():
 
     # Preprocess reconstruction for the plots
     input_data = data_loader_3.get_all_samples()["obs"]
+    input_state = data_loader_3.get_all_samples()["state"]
     mu_x = mu_x.permute(0, 2, 3, 1)  # move color channel to the end
     mu_x = mu_x.detach().numpy()  # pass to numpy framework
     filepath = MF_DKL.directory + "/Results/" + env_name + "/" + results_folder + "/plots/"
     if not os.path.exists(filepath):
         os.makedirs(filepath)
 
+    # Plot the actual state space
+    if not os.path.exists(filepath+"state_space/"):
+        os.makedirs(filepath+"state_space/")
+    plot_latent_dims(input_state.numpy(), dims=input_state.shape[1], episodes=3, show=False, filename=filepath+"state_space/")
+
     # Plot of the latent variables
-    plot_latent_dims(z_3.detach().numpy(), dims=ID, episodes=3, show=False, filename=filepath)
+    if not os.path.exists(filepath+"latent_space/"):
+        os.makedirs(filepath+"latent_space/")
+    plot_latent_dims(z_3.detach().numpy(), dims=ID, episodes=3, show=False, filename=filepath+"latent_space/")
 
     # Plot of the reconstruction
     l = 3   # level chosen

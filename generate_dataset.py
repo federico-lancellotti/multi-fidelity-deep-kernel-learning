@@ -85,7 +85,7 @@ class GenerateDataset:
         for episode in range(self.num_episodes[0]):
             # Reset the environment with new (random) initial conditions
             # and render the first frames.
-            state = self.env.reset()
+            state = self.env.reset()[0]
             frame0 = np.array(self.env.render())
             frame1 = np.array(self.env.render())
 
@@ -103,7 +103,7 @@ class GenerateDataset:
                     terminated = True
 
                 # Log the observations
-                self.log_obs(episode, obs, next_obs, terminated)
+                self.log_obs(episode, obs, next_obs, terminated, state, next_state)
 
                 # Print png
                 if self.png:
@@ -141,12 +141,12 @@ class GenerateDataset:
 
     # Log the observation in the logger, as a tuple with the current frame,
     # the next one and the terminated status.
-    def log_obs(self, episode, obs, next_obs, terminated):
-        self.logger[0].obslog(dict(obs=obs[0], next_obs=next_obs[0], terminated=terminated))
+    def log_obs(self, episode, obs, next_obs, terminated, state, next_state):
+        self.logger[0].obslog(dict(obs=obs[0], next_obs=next_obs[0], terminated=terminated, state=state, next_state=next_state))
 
         for l in range(1, self.levels):
             if episode < self.num_episodes[l]:
-                self.logger[l].obslog(dict(obs=obs[l], next_obs=next_obs[l], terminated=terminated))
+                self.logger[l].obslog(dict(obs=obs[l], next_obs=next_obs[l], terminated=terminated, state=state, next_state=next_state))
 
     # Save locally the complete log as file.
     def save_log(self):
