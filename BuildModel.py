@@ -10,6 +10,10 @@ from utils import load_pickle
 from trainer import train_dyn as train
 from data_loader import DataLoader
 
+import warnings
+warnings.filterwarnings("ignore", message="torch.sparse.SparseTensor")
+
+
 class BuildModel:
     def __init__(self, args, use_gpu=False, test=False):
         self.use_gpu = use_gpu
@@ -169,7 +173,7 @@ class BuildModel:
 
         # Training
         if self.training:
-            print("start training...")
+            print("Start training...")
             for epoch in range(1, self.max_epoch + 1):
                 with gpytorch.settings.cholesky_jitter(self.jitter):
                     train(
