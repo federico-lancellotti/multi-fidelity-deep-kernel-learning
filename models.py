@@ -20,16 +20,36 @@ OUT_DIM = args["out_dim"]
 ##### Reconstruction model #####
 ################################
 
-# The encoder is composed of 4 convolutional layers with 32 filters per layer.
-# The convolutional filters are of size (3 × 3) and shifted across the images
-# with stride 1 (only the first convolutional layer has stride 2 to quickly
-# reduce the input dimensionality). Batch normalization is also used after
-# the 2nd and 4th convolutional layers.
-# The output features of the last convolutional layer are flattened and fed to
-# two final fully connected layers of dimensions 256 and 20, respectively,
-# compressing the features to a 20-dimensional feature vector. Each layer has ELU
-# activations, except the last fully-connected layer with a linear activation.
+
 class Encoder(nn.Module):
+    """
+    Encoder module for the multi-fidelity DKL model.
+
+    The encoder is composed of 4 convolutional layers with 32 filters per layer. 
+    The convolutional filters are of size (3x3) and shifted across the images with stride 1 
+    (only the first convolutional layer has stride 2 to quickly reduce the input dimensionality). 
+    Batch normalization is also used after the 2nd and 4th convolutional layers. 
+    The output features of the last convolutional layer are flattened and fed to two final fully 
+    connected layers of dimensions 256 and 20, respectively, compressing the features 
+    to a 20-dimensional feature vector. 
+    Each layer has ELU activations, except the last fully-connected layer with a linear activation.
+
+    Args:
+        hidden_dim (int): The dimensionality of the hidden layer.
+        z_dim (int): The dimensionality of the latent space.
+        out_dim (int): The output dimensionality.
+
+    Attributes:
+        conv1 (nn.Conv2d): The first convolutional layer.
+        conv2 (nn.Conv2d): The second convolutional layer.
+        batch1 (nn.BatchNorm2d): The first batch normalization layer.
+        conv3 (nn.Conv2d): The third convolutional layer.
+        conv4 (nn.Conv2d): The fourth convolutional layer.
+        batch2 (nn.BatchNorm2d): The second batch normalization layer.
+        fc1 (nn.Linear): The first fully connected layer.
+        fc2 (nn.Linear): The second fully connected layer.
+    """
+
     def __init__(self, hidden_dim=256, z_dim=20, out_dim=84):
         super(Encoder, self).__init__()
 
@@ -47,6 +67,16 @@ class Encoder(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, z_dim)
 
     def encoder(self, x):
+        """
+        Encodes the input tensor into the latent space.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            torch.Tensor: The encoded tensor in the latent space.
+        """
+
         x = F.elu(self.conv1(x))
         x = F.elu(self.conv2(x))
         x = self.batch1(x)
@@ -59,6 +89,16 @@ class Encoder(nn.Module):
         return x
 
     def forward(self, x):
+        """
+        Forward pass of the encoder. Calls the encoder method.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            torch.Tensor: The encoded tensor in the latent space.
+        """
+
         return self.encoder(x)
 
 
@@ -70,6 +110,22 @@ class Encoder(nn.Module):
 # the layers except the last one.
 # The outputs are the mean μ_xhat_t and variance sigma2_xhat_t of N(mu_xhat_t, sigma2_xhat_t).
 class Decoder(nn.Module):
+    """
+    Decoder module for generating output from latent space.
+
+    The decoder is composed of a linear fully-connected layer and 4 transpose 
+    convolutional layers with 32 filters each.
+    The convolutional filters are of size (3x3) and shifted across the images with 
+    stride 1 (the last convolutional layer has stride 2).
+    Batch normalization is used after the 2nd and 4th convolutional layers, and ELU 
+    activations are employed for all the layers except the last one.
+    The outputs are the mean μ_xhat_t and variance sigma2_xhat_t of N(μ_xhat_t, sigma_xhat_t).
+
+    Args:
+        z_dim (int): Dimension of the latent space. Default is 20.
+        out_dim (int): Dimension of the output. Default is 84.
+    """
+
     def __init__(self, z_dim=20, out_dim=84):
         super(Decoder, self).__init__()
 
@@ -86,6 +142,18 @@ class Decoder(nn.Module):
         )
 
     def decoder(self, z):
+        """
+        Decodes the latent space representation back to the original space, 
+        producing a reconstruction of the input image.
+
+        Args:
+            z (torch.Tensor): Latent space representation.
+
+        Returns:
+            mu (torch.Tensor): Mean of the generated output.
+            std (torch.Tensor): Standard deviation of the generated output.
+        """
+
         z = F.elu(self.fc(z))
         z = self.unflatten(z)
         z = self.batch3(z)
@@ -98,26 +166,43 @@ class Decoder(nn.Module):
         return mu, std
 
     def forward(self, z):
+        """
+        Forward pass of the decoder. Calls the decoder method.
+
+        Args:
+            z (torch.Tensor): Latent space representation.
+
+        Returns:
+            torch.Tensor: Generated output.
+        """
+
         return self.decoder(z)
 
 
-# The latent variables of the feature vector are fed to independent GPs with
-# constant mean and ARD-SE kernel, which produces a 20-dimensional latent state
-# distribution p( z_t | x_t ). From the latent state distribution p( z_t | x_t ), we
-# can sample the latent state vectors z_t.
 class GaussianProcessLayer(gpytorch.models.ApproximateGP):
-    def __init__(self, num_dim, grid_size=64, grid_bounds=(-10.0, 10)):
-        # num_dim: number of dimensions (tasks) in the GP model, namely the dimensionality of the output space.
-        # grid_size: the grid is a set of points used to approximate the GP model. A larger grid size provides a denser approximation.
-        # grid_bounds: specifies the bounds of the regularization.
+    """
+    Gaussian Process Layer class.
 
+    This class represents a Gaussian Process (GP) layer in a multi-layer deep kernel learning (DKL) model.
+    It extends the `ApproximateGP` class from the `gpytorch.models` module.
+
+    Args:
+        num_dim (int): Number of dimensions (tasks) in the GP model, namely the dimensionality of the output space.
+        grid_size (int, optional): The grid size used to approximate the GP model. A larger grid size provides a denser approximation. Default is 64.
+        grid_bounds (tuple, optional): Specifies the bounds of the regularization. Default is (-10.0, 10).
+
+    Attributes:
+        mean_module (gpytorch.means.ConstantMean): Mean module of the GP model.
+        covar_module (gpytorch.kernels.ScaleKernel): Covariance module of the GP model.
+        grid_bounds (tuple): Bounds of the regularization.
+
+    """
+
+    def __init__(self, num_dim, grid_size=64, grid_bounds=(-10.0, 10)):
         variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             num_inducing_points=grid_size, batch_shape=torch.Size([num_dim])
         )
 
-        # Our base variational strategy is a GridInterpolationVariationalStrategy,
-        # which places variational inducing points on a Grid
-        # We wrap it with a IndependentMultitaskVariationalStrategy so that our output is a vector-valued GP
         variational_strategy = (
             gpytorch.variational.IndependentMultitaskVariationalStrategy(
                 gpytorch.variational.GridInterpolationVariationalStrategy(
@@ -129,9 +214,7 @@ class GaussianProcessLayer(gpytorch.models.ApproximateGP):
                 num_tasks=num_dim,
             )
         )
-        super().__init__(
-            variational_strategy
-        )  # calls the constructor of the base class (gpytorch.models.ApproximateGP) and initializes the GP model with the specified variational strategy
+        super().__init__(variational_strategy)
 
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(
@@ -145,16 +228,51 @@ class GaussianProcessLayer(gpytorch.models.ApproximateGP):
         self.grid_bounds = grid_bounds
 
     def forward(self, x):
+        """
+        Forward pass of the Gaussian Process Layer.
+
+        Args:
+            x (torch.Tensor): Input tensor.
+
+        Returns:
+            gpytorch.distributions.MultivariateNormal: Multivariate normal distribution representing the output of the GP layer.
+
+        """
+
         mean = self.mean_module(x)
         covar = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
 
-# Complete autoencoder.
-# The latent state vectors z_t are fed into the decoder D to learn
-# the reconstruction distribution p(xˆt|zt). A popular choice for p(x_t|z_t)
-# is Gaussian with unit variance.
 class SVDKL_AE(gpytorch.Module):
+    """
+    Variational Autoencoder with Stochastic Variational Deep Kernel Learning (SVDKL) architecture.
+
+    Args:
+        num_dim (int): Number of input dimensions.
+        likelihood: Likelihood function for the Gaussian process.
+        grid_bounds (tuple, optional): Bounds of the grid for the Gaussian process. Defaults to (-10.0, 10.0).
+        hidden_dim (int, optional): Dimension of the hidden layer in the encoder. Defaults to 32.
+        grid_size (int, optional): Size of the grid for the Gaussian process. Defaults to 32.
+        obs_dim (int, optional): Dimension of the observation. Defaults to 84.
+        rho (int, optional): Scaling factor for the low-fidelity input. Defaults to 1.
+        num_dim_LF (int, optional): Number of dimensions for the low-fidelity input. Defaults to 0.
+
+    Attributes:
+        num_dim (int): Number of input dimensions.
+        out_dim (int): Number of output dimensions.
+        rho (int): Scaling factor for the low-fidelity input.
+        grid_bounds (tuple): Bounds of the grid for the Gaussian process.
+        likelihood: Likelihood function for the Gaussian process.
+        num_dim_LF (int): Number of dimensions for the low-fidelity input.
+        gp_layer: Gaussian process layer.
+        encoder: Encoder module.
+        decoder: Decoder module.
+        scale_to_bounds: Module to scale the neural network features to the grid bounds.
+        fc_LF: Linear layer to transform the low-fidelity input if the number of dimensions is different.
+
+    """
+
     def __init__(
         self,
         num_dim,
@@ -188,6 +306,28 @@ class SVDKL_AE(gpytorch.Module):
 
 
     def forward(self, x, z_LF):
+        """
+        Forward pass of the SVDKL-AE model. 
+        The input data is passed through the encoder, and the latent space representation 
+        is added to the latent space representation of the low-fidelity input.
+        The combined latent space representation is then passed through the Gaussian process layer.
+        The output of the Gaussian process layer is passed through the likelihood function to obtain 
+        the mean and variance.
+        The mean and variance are then passed through the decoder to obtain the reconstructed output.
+
+        Args:
+            x: Input data.
+            z_LF: Low-fidelity input data.
+
+        Returns:
+            mu_hat: Mean of the decoder output.
+            var_hat: Variance of the decoder output.
+            res: Gaussian process result.
+            mean: Mean of the Gaussian process result.
+            covar: Covariance of the Gaussian process result.
+            z: Sampled latent variable.
+
+        """
         if self.num_dim_LF != self.num_dim:
             z_LF = self.fc_LF(z_LF)
 
@@ -215,11 +355,45 @@ class SVDKL_AE(gpytorch.Module):
 
 
 ################################
-##### Reconstruction model #####
+######### Forward model ########
 ################################
     
 class SVDKL_AE_latent_dyn(nn.Module):
+    """
+    A class representing the model for learning the dynamics of a system using the Stochastic Variational 
+    Deep Kernel Learning Autoencoder architecture.
+
+    The first part of the model is an SVDKL Autoencoder that learns the latent space representation of the input data.
+    The second part of the model is a DKL forward model that learns the dynamics of the latent space representation.
+
+    Args:
+        num_dim (int): The number of latent dimensions.
+        likelihood (torch.distributions.Distribution): The likelihood distribution for the autoencoder.
+        likelihood_fwd (torch.distributions.Distribution): The likelihood distribution for the forward model.
+        grid_bounds (tuple, optional): The bounds of the grid. Defaults to (-10., 10.).
+        h_dim (int, optional): The hidden dimension size. Defaults to 32.
+        grid_size (int, optional): The size of the grid. Defaults to 32.
+        obs_dim (int, optional): The dimension of the observations. Defaults to 84.
+        rho (int, optional): The value of rho. Defaults to 1.
+        num_dim_LF (int, optional): The number of latent dimensions for low-fidelity. Defaults to 0.
+    """
+
     def __init__(self, num_dim, likelihood, likelihood_fwd, grid_bounds=(-10., 10.), h_dim=32, grid_size=32, obs_dim=84, rho=1, num_dim_LF=0):
+        """
+        Initialize the SVDKL_AE_latent_dyn class.
+
+        Args:
+            num_dim (int): The number of dimensions.
+            likelihood (str): The likelihood function to use.
+            likelihood_fwd (str): The likelihood function for the forward model.
+            grid_bounds (tuple, optional): The bounds of the grid. Defaults to (-10., 10.).
+            h_dim (int, optional): The hidden dimension. Defaults to 32.
+            grid_size (int, optional): The size of the grid. Defaults to 32.
+            obs_dim (int, optional): The observation dimension. Defaults to 84.
+            rho (int, optional): The value of rho. Defaults to 1.
+            num_dim_LF (int, optional): The number of dimensions for the low-fidelity model. Defaults to 0.
+        """
+        
         super(SVDKL_AE_latent_dyn, self).__init__()
 
         self.obs_dim = obs_dim
@@ -232,12 +406,60 @@ class SVDKL_AE_latent_dyn(nn.Module):
                                               grid_size=grid_size, likelihood=likelihood_fwd, rho=rho, num_dim_LF=num_dim_LF)  # DKL forward model
 
     def forward(self, x, z_LF, x_next, z_next_LF, z_fwd_LF):
+        """
+        Forward pass of the SVDKL_AE_latent_dyn model.
+
+        Args:
+            x (torch.Tensor): Input data.
+            z_LF (torch.Tensor): Latent space representation of the low-fidelity input data.
+            x_next (torch.Tensor): Next input data.
+            z_next_LF (torch.Tensor): Latent space representation of the low-fidelity next input data.
+            z_fwd_LF (torch.Tensor): Latent space representation of the low-fidelity forward data.
+
+        Returns:
+            tuple: A tuple containing the following elements:
+                - mu_x (torch.Tensor): Mean of the reconstructed input data.
+                - var_x (torch.Tensor): Variance of the reconstructed input data.
+                - mu (torch.Tensor): Mean of the latent space representation.
+                - var (torch.Tensor): Variance of the latent space representation.
+                - z (torch.Tensor): Latent space representation.
+                - res (torch.Tensor): Residuals.
+                - mu_target (torch.Tensor): Mean of the reconstructed next input data.
+                - var_target (torch.Tensor): Variance of the reconstructed next input data.
+                - z_target (torch.Tensor): Latent space representation of the next input data.
+                - res_target (torch.Tensor): Residuals of the next input data.
+                - mu_fwd (torch.Tensor): Mean of the latent space representation for the forward model.
+                - var_fwd (torch.Tensor): Variance of the latent space representation for the forward model.
+                - res_fwd (torch.Tensor): Residuals for the forward model.
+                - z_fwd (torch.Tensor): Latent space representation for the forward model.
+                - mu_x_rec (torch.Tensor): Mean of the reconstructed input data from the forward model.
+        """
+
         mu_x, var_x, res, mu, var, z = self.AE_DKL(x, z_LF)
         mu_x_target, var_x_target, res_target, mu_target, var_target, z_target = self.AE_DKL(x_next, z_next_LF)
+        
         res_fwd, mu_fwd, var_fwd, z_fwd = self.fwd_model_DKL(z, z_fwd_LF)
-        return mu_x, var_x, mu, var, z, res, mu_target, var_target, z_target, res_target, mu_fwd, var_fwd, res_fwd, z_fwd
+        mu_x_rec, _ = self.AE_DKL.decoder(z_fwd)
+
+        return mu_x, var_x, mu, var, z, res, mu_target, var_target, z_target, res_target, mu_fwd, var_fwd, res_fwd, z_fwd, mu_x_rec
 
     def predict_dynamics(self, z, z_fwd_LF, samples=1):
+        """
+        Predict the dynamics of the system.
+
+        Args:
+            z (torch.Tensor): Latent space representation.
+            z_fwd_LF (torch.Tensor): Latent space representation of the low-fidelity forward data.
+            samples (int, optional): Number of samples to generate. Defaults to 1.
+
+        Returns:
+            tuple: A tuple containing the following elements:
+                - mu_x_rec (torch.Tensor): Mean of the reconstructed input data from the forward model.
+                - z_fwd (torch.Tensor): Latent space representation for the forward model.
+                - mu_fwd (torch.Tensor): Mean of the latent space representation for the forward model.
+                - res_fwd (torch.Tensor): Residuals for the forward model.
+        """
+
         res_fwd, mu_fwd, var_fwd, z_fwd = self.fwd_model_DKL(z, z_fwd_LF)
         if samples == 1:
             mu_x_rec, _ = self.AE_DKL.decoder(z_fwd)
@@ -251,12 +473,59 @@ class SVDKL_AE_latent_dyn(nn.Module):
         return mu_x_rec, z_fwd, mu_fwd, res_fwd
 
     def predict_dynamics_mean(self, mu, z_fwd_LF):
+        """
+        Predict the mean dynamics of the system.
+
+        Args:
+            mu (torch.Tensor): Mean of the latent space representation.
+            z_fwd_LF (torch.Tensor): Latent space representation of the low-fidelity forward data.
+
+        Returns:
+            tuple: A tuple containing the following elements:
+                - mu_x_rec (torch.Tensor): Mean of the reconstructed input data from the forward model.
+                - z_fwd (torch.Tensor): Latent space representation for the forward model.
+                - mu_fwd (torch.Tensor): Mean of the latent space representation for the forward model.
+                - res_fwd (torch.Tensor): Residuals for the forward model.
+        """
+
         res_fwd, mu_fwd, var_fwd, z_fwd = self.fwd_model_DKL(mu, z_fwd_LF)
         mu_x_rec, _ = self.AE_DKL.decoder(mu_fwd)
         return mu_x_rec, z_fwd, mu_fwd, res_fwd
     
 
 class Forward_DKLModel(gpytorch.Module):
+    """
+    Forward_DKLModel is a class that represents a forward deep kernel learning model.
+    It learns the forward dynamics of the latent space representation.
+
+    The input data is passed through a neural network model, and the latent space representation 
+    is added to the latent space representation of the low-fidelity input.
+
+    Args:
+        num_dim (int): The number of input dimensions.
+        likelihood: The likelihood function for the Gaussian process.
+        grid_bounds (tuple, optional): The bounds of the grid. Defaults to (-10., 10.).
+        h_dim (int, optional): The hidden dimension size for the neural network model. Defaults to 256.
+        grid_size (int, optional): The size of the grid. Defaults to 32.
+        rho (int, optional): The scaling factor for the low-fidelity input. Defaults to 1.
+        num_dim_LF (int, optional): The number of dimensions for the low-fidelity input. Defaults to 0.
+
+    Attributes:
+        gp_layer_2: The Gaussian process layer.
+        grid_bounds (tuple): The bounds of the grid.
+        num_dim (int): The number of input dimensions.
+        likelihood: The likelihood function for the Gaussian process.
+        rho (int): The scaling factor for the low-fidelity input.
+        num_dim_LF (int): The number of dimensions for the low-fidelity input.
+        fwd_model: The forward neural network model.
+        scale_to_bounds: The module that scales the neural network features to nice values.
+        fc_LF: The linear layer for low-fidelity input transformation.
+
+    Methods:
+        forward: Performs the forward pass of the model.
+
+    """
+
     def __init__(self, num_dim, likelihood, grid_bounds=(-10., 10.), h_dim=256, grid_size=32, rho=1, num_dim_LF=0):
         super(Forward_DKLModel, self).__init__()
         self.gp_layer_2 = GaussianProcessLayer(num_dim=num_dim, grid_bounds=grid_bounds, grid_size=grid_size)
@@ -275,6 +544,21 @@ class Forward_DKLModel(gpytorch.Module):
             self.fc_LF = nn.Linear(self.num_dim_LF, self.num_dim)
 
     def forward(self, x, z_LF):
+        """
+        Performs the forward pass of the model.
+
+        Args:
+            x: The input data.
+            z_LF: The low-fidelity input data.
+
+        Returns:
+            res: The output of the Gaussian process layer.
+            mean: The mean of the Gaussian process output.
+            var: The variance of the Gaussian process output.
+            z: The sampled output from the likelihood function.
+
+        """
+
         if self.num_dim_LF != self.num_dim:
             z_LF = self.fc_LF(z_LF)
 
@@ -289,13 +573,29 @@ class Forward_DKLModel(gpytorch.Module):
                 res = self.gp_layer_2(features)
         else:
             res = self.gp_layer_2(features)
+        
         mean = res.mean
         var = res.variance
         z = self.likelihood(res).rsample()
+
         return res, mean, var, z
     
 
 class ForwardModel(nn.Module):
+    """
+    A forward model that maps input z to output features, providing a representation of the following frame.
+
+    Args:
+        z_dim (int): The dimensionality of the input z.
+        h_dim (int): The dimensionality of the hidden layer.
+
+    Attributes:
+        fc (nn.Linear): The fully connected layer from z_dim to h_dim.
+        fc1 (nn.Linear): The fully connected layer from h_dim to h_dim.
+        fc2 (nn.Linear): The fully connected layer from h_dim to z_dim.
+        batch (nn.BatchNorm1d): Batch normalization layer for z_dim.
+    """
+
     def __init__(self, z_dim=20, h_dim=256):
         super(ForwardModel, self).__init__()
 
@@ -306,6 +606,17 @@ class ForwardModel(nn.Module):
         self.batch = nn.BatchNorm1d(z_dim)
 
     def forward(self, z):
+        """
+        Forward pass of the forward model.
+
+        Args:
+            z (torch.Tensor): The input tensor of shape (batch_size, z_dim).
+
+        Returns:
+            torch.Tensor: The output tensor of shape (batch_size, z_dim).
+
+        """
+        
         z = F.elu(self.fc(z))
         z = F.elu(self.fc1(z))
         features = self.fc2(z)

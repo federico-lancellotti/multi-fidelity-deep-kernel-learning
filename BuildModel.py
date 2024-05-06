@@ -7,7 +7,7 @@ from datetime import datetime
 from models import SVDKL_AE_latent_dyn
 from variational_inference import VariationalKL
 from utils import load_pickle
-from trainer import train_dyn as train
+from trainer import train
 from data_loader import DataLoader
 
 import warnings
@@ -15,7 +15,65 @@ warnings.filterwarnings("ignore", message="torch.sparse.SparseTensor")
 
 
 class BuildModel:
+    """
+    Class for building and training a multi-fidelity deep kernel learning model.
+
+    Args:
+        args (dict): Dictionary containing the model parameters.
+        use_gpu (bool, optional): Flag indicating whether to use GPU for training. Defaults to False.
+        test (bool, optional): Flag indicating whether the model is being used for testing. Defaults to False.
+
+    Attributes:
+        use_gpu (bool): Flag indicating whether to use GPU for training.
+        seed (int): The seed for the random number generator.
+        batch_size (int): The size of the batch.
+        max_epoch (int): The maximum number of epochs for training.
+        rho (float): The rho parameter for the model.
+        training (bool): Flag indicating whether the model is being trained.
+        lr (float): The learning rate for the model.
+        lr_gp (float): The learning rate for the GP layer.
+        lr_gp_lik (float): The learning rate for the likelihood.
+        lr_gp_var (float): The learning rate for the variational parameters.
+        reg_coef (float): The regularization coefficient.
+        k1 (float): The k1 parameter for the model.
+        k2 (float): The k2 parameter for the model.
+        grid_size (int): The size of the grid.
+        obs_dim_1 (list): The first dimension of the observation, at each fidelity level.
+        obs_dim_2 (list): The second dimension of the observation, at each fidelity level.
+        obs_dim_3 (int): The third dimension of the observation.
+        h_dim (int): The dimension of the hidden layer.
+        env_name (str): The name of the environment.
+        training_dataset (list): The list of training datasets.
+        log_interval (int): The interval for logging.
+        testing_dataset (list): The list of testing datasets.
+        jitter (float): The jitter parameter for the model, to avoid numerical instability.
+        results_folder (str): The folder for saving the results.
+        weights_filename (list): The list of filenames for saving the weights.
+        folder (list): The list of folders containing the data.
+        data (list): The list of data samples.
+        N (list): The list of the number of data samples.
+        directory (str): The directory of the model.
+        folder_date (str): The folder for saving the results.
+        save_pth_dir (str): The path for saving the results.
+
+    Methods:
+        add_level(level, latent_dim, latent_dim_LF=0): Adds a level of fidelity to the model.
+        train_level(level, model, z_LF=None, z_next_LF=None, z_fwd_LF=None): Trains a level of fidelity in the model.
+        test_level(level, model, z_LF=None, z_next_LF=None, z_fwd_LF=None): Tests a level of fidelity in the model.
+        eval_level(model, data_loader): Evaluates a level of fidelity in the model.
+    """
+
     def __init__(self, args, use_gpu=False, test=False):
+        """
+        Initialize the BuildModel object.
+        Set the parameters for the model and load the data.
+
+        Args:
+            args (dict): A dictionary containing the parameters for the model.
+            use_gpu (bool, optional): Whether to use GPU for computations. Defaults to False.
+            test (bool, optional): Whether the model is being used for testing. Defaults to False.
+        """
+
         self.use_gpu = use_gpu
         
         # Set parameters
@@ -76,6 +134,19 @@ class BuildModel:
 
 
     def add_level(self, level, latent_dim, latent_dim_LF=0):
+        """
+        Add a new instance of the model with the specified level of fidelity.
+        Set the likelihood and initialize the model.
+
+        Args:
+            level (int): The level to be added.
+            latent_dim (int): The dimension of the latent space.
+            latent_dim_LF (int, optional): The dimension of the low-fidelity latent space. Defaults to 0.
+
+        Returns:
+            model: The initialized model with the added level.
+        """
+
         # Set likelihood
         likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(
             latent_dim, rank=0, has_task_noise=True, has_global_noise=False
@@ -101,6 +172,21 @@ class BuildModel:
 
 
     def train_level(self, level, model, z_LF=None, z_next_LF=None, z_fwd_LF=None):
+        """
+        Trains the model instance at a specific level of fidelity.
+
+        Args:
+            level (int): The level of fidelity.
+            model: The model to be trained.
+            z_LF (torch.Tensor, optional): The previous level of fidelity for the low-fidelity data. Defaults to None.
+            z_next_LF (torch.Tensor, optional): The next level of fidelity for the low-fidelity data. Defaults to None.
+            z_fwd_LF (torch.Tensor, optional): The forward level of fidelity for the low-fidelity data. Defaults to None.
+
+        Returns:
+            model: The trained model.
+            train_loader: The data loader used for training.
+        """
+
         latent_dim = model.num_dim
         
         # Define dummy previous level of fidelity
@@ -117,16 +203,20 @@ class BuildModel:
                 mps_device = torch.device("mps")
                 model.to(mps_device)
 
+        # Define the variational loss
         variational_kl_term = VariationalKL(
-            model.AE_DKL.likelihood, model.AE_DKL.gp_layer, num_data=self.batch_size
-        )  # len(data)
+            model.AE_DKL.likelihood, 
+            model.AE_DKL.gp_layer, 
+            num_data=self.batch_size
+        )
         variational_kl_term_fwd = VariationalKL(
             model.fwd_model_DKL.likelihood,
             model.fwd_model_DKL.gp_layer_2,
             num_data=self.batch_size,
         )
 
-        # Use the adam optimizer
+        # Set the optimizer
+        ## Set the Adam optimizer
         optimizer = torch.optim.Adam(
             [
                 {"params": model.AE_DKL.encoder.parameters()},
@@ -141,6 +231,7 @@ class BuildModel:
             weight_decay=self.reg_coef,
         )
 
+        ## Use the SGD optimizer for the variational parameters
         optimizer_var1 = torch.optim.SGD([
             {'params': model.AE_DKL.gp_layer.variational_parameters(), 'lr': self.lr_gp_var},
             ], lr=self.lr_gp_var, momentum=0.9, nesterov=True, weight_decay=0) # momentum=0.9, nesterov=True, weight_decay=0
@@ -148,6 +239,7 @@ class BuildModel:
             {'params': model.fwd_model_DKL.gp_layer_2.variational_parameters(), 'lr': self.lr_gp_var},
             ], lr=self.lr_gp_var, momentum=0.9, nesterov=True, weight_decay=0)
 
+        ## Collect the optimizers in a list
         optimizers = [optimizer, optimizer_var1, optimizer_var2]
 
         # Reduce the learning rate when at 50% and 75% of the training.
@@ -162,7 +254,7 @@ class BuildModel:
         now = datetime.now()
         date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
 
-        # Preprocessing of the data
+        # Define the data loader for training
         train_loader = DataLoader(
             self.data[level],
             z_LF,
@@ -171,7 +263,7 @@ class BuildModel:
             obs_dim=(self.obs_dim_1[level], self.obs_dim_2[level], self.obs_dim_3),
         )
 
-        # Training
+        # Train the model
         if self.training:
             print("Start training...")
             for epoch in range(1, self.max_epoch + 1):
@@ -228,6 +320,20 @@ class BuildModel:
 
 
     def test_level(self, level, model, z_LF=None, z_next_LF=None, z_fwd_LF=None):
+        """
+        Test the model at a specific fidelity level.
+
+        Args:
+            level (int): The fidelity level to test the model at.
+            model: The model to be tested.
+            z_LF (torch.Tensor, optional): The latent variable at the previous level of fidelity. Defaults to None.
+            z_next_LF (torch.Tensor, optional): The latent variable at the next level of fidelity. Defaults to None.
+            z_fwd_LF (torch.Tensor, optional): The latent variable at the forward level of fidelity. Defaults to None.
+
+        Returns:
+            tuple: A tuple containing the model and the data loader.
+        """
+
         # Load data
         directory = os.path.dirname(os.path.abspath(__file__))
         data = self.data[level]
@@ -236,7 +342,7 @@ class BuildModel:
         # Load weights
         weights_folder = os.path.join(
             directory + "/Results/" + self.env_name + "/" + self.results_folder + "/", self.weights_filename[level] + ".pth"
-            )
+        )
         
         model.load_state_dict(torch.load(weights_folder)["model"])
         model.AE_DKL.likelihood.load_state_dict(torch.load(weights_folder)["likelihood"])
@@ -249,6 +355,7 @@ class BuildModel:
             z_next_LF = torch.zeros((N, latent_dim))
             z_fwd_LF = torch.zeros((N, latent_dim))
 
+        # Define the data loader for testing
         data_loader = DataLoader(
             data, z_LF, z_next_LF, z_fwd_LF, obs_dim=(self.obs_dim_1[level], self.obs_dim_2[level], self.obs_dim_3)
         )
@@ -257,6 +364,22 @@ class BuildModel:
 
 
     def eval_level(self, model, data_loader):
+        """
+        Evaluate the model at a given level.
+
+        Args:
+            model (Model): The model to evaluate.
+            data_loader (DataLoader): The data loader containing the samples.
+
+        Returns:
+            tuple: A tuple containing the following elements:
+                - z (Tensor): The latent representation of the sample frames at time t-1 and t.
+                - z_next (Tensor): The latent representation of the sample frames at time t and t+1.
+                - z_fwd (Tensor): The latent representation of the forward predicted samples, at time t and t+1.
+                - mu_x (Tensor): The mean of the observed samples, at time t-1 and t.
+                - mu_next (Tensor): The mean of the next observed samples, at time t and t+1.
+        """
+
         model.eval()
         model.AE_DKL.likelihood.eval()
         model.fwd_model_DKL.likelihood.eval()
@@ -265,7 +388,7 @@ class BuildModel:
         pred_samples["obs"] = pred_samples["obs"].permute(0, 3, 1, 2)
         pred_samples["next_obs"] = pred_samples["next_obs"].permute(0, 3, 1, 2)
 
-        mu_x, _, _, _, z, _, mu_next, _, z_next, _, _, _, _, z_fwd = model(
+        mu_x, _, _, _, z, _, mu_next, _, z_next, _, _, _, _, z_fwd, mu_x_fwd = model(
             pred_samples["obs"],
             pred_samples["z_LF"],
             pred_samples["next_obs"],

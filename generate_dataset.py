@@ -18,10 +18,75 @@ filterwarnings(
 
 
 class GenerateDataset:
-    def __init__(self, levels=2, test=False, png=False):
+    """
+    Class for generating datasets for the multi-fidelity deep kernel learning model.
+    It generates a dataset of frames from a Gymnasium environment at multiple levels of fidelity.
+
+    The input parameters are read from the config.yaml file and are:
+    - env_name: the name of the Gym environment;
+    - obs_dim_1: the first dimension of the frame;
+    - obs_dim_2: the second dimension of the frame;
+    - crop: whether to crop the frame;
+    - occlusion: whether to add an occlusion to the frame;
+    - num_episodes: the number of episodes to generate.
+
+    The dataset is saved in the Data folder as a pickle file for each level of fidelity, 
+    containing a list of dictionaries with:
+    - obs: the frames at time t-1 and t, stacked;
+    - next_obs: the frames at time t and t+1, stacked;
+    - terminated: whether the episode is terminated;
+    - state: the current state of the environment;
+    - next_state: the next state of the environment.
+    
+    The class can also save the frames as PNG images in the png folder.
+
+    Args:
+        levels (int): The number of levels of fidelity for the dataset. Default is 2.
+        seed (int): The seed for the random number generator. Default is 1.
+        test (bool): Whether to generate a test set. Default is False.
+        png (bool): Whether to save frames as PNG images. Default is False.
+
+    Attributes:
+        levels (int): The number of levels of fidelity for the dataset.
+        seed (int): The seed for the random number generator.
+        png (bool): Whether to save frames as PNG images.
+        env_name (str): The name of the Gym environment.
+        data_filename (list): The list of filenames for the dataset.
+        frame_dim1 (list): The list of the first dimension of the frame at each level.
+        frame_dim2 (list): The list of the second dimension of the frame at each level.
+        crop (list): The list of flags indicating whether to crop the frame at each level.
+        occlusion (list): The list of flags indicating whether to add an occlusion to the frame at each level.
+        num_episodes (list): The list of the number of episodes to generate at each level.
+        max_steps (int): The maximum number of steps in an episode.
+        env (gym.Env): The Gym environment.
+        folder (str): The path to the Data folder.
+        png_folder (str): The path to the png folder.
+        logger (list): The list of loggers for each level of fidelity.
+
+    Methods:
+        set_environment: Sets up the Gym environment based on the specified environment name.
+        generate_dataset: Generates a dataset by running episodes in the environment and logging observations.
+        new_obs: Generates a new observation by stacking frames at different levels of fidelity.
+        log_obs: Logs the observation as a tuple with the current frame, the next one, the terminated status, the current state, and the next state.
+        save_log: Saves the dataset as a pickle file for each level of fidelity.
+        save_image: Saves the given frame as an image.
+    """
+
+    def __init__(self, levels=2, seed=1, test=False, png=False):
+        """
+        Initializes the GenerateDataset class.
+
+        Args:
+            levels (int): The number of levels for the dataset. Default is 2.
+            seed (int): The seed for the random number generator. Default is 1.
+            test (bool): Flag indicating whether to generate a test set or not. Default is False.
+            png (bool): Flag indicating whether to generate PNG images or not. Default is False.
+        """
+
         super(GenerateDataset, self).__init__()
 
         self.levels = levels
+        self.seed = seed
         self.png = png
 
         # Config inputs
@@ -48,8 +113,8 @@ class GenerateDataset:
             self.max_steps = 500  # Acrobot-v1 episode truncates at 500 time steps.
         elif self.env_name == "MountainCarContinuous":
             self.max_steps = 400  # MountainCarContinuous-v0 episode truncates at 999 time steps.
-        self.seed = args["seed"]
 
+        # Call the set_environment method
         self.set_environment()
 
         # Set logger
@@ -58,8 +123,19 @@ class GenerateDataset:
         self.png_folder = os.path.join(self.folder + "png/")
         self.logger = [Logger(self.folder) for i in range(levels)]
 
-    # Generate and set the Gymnasium environment
+
     def set_environment(self):
+        """
+        Sets up the Gym environment based on the specified environment name.
+
+        Parameters:
+        - self.env_name (str): The name of the Gym environment.
+        - self.seed (int): The seed value for random number generation.
+
+        Returns:
+        - None
+        """
+
         # Set Gym environment
         if self.env_name == "Pendulum":
             self.env = gym.make("Pendulum-v1", g=9.81, render_mode="rgb_array")
@@ -72,8 +148,19 @@ class GenerateDataset:
         self.env.reset(seed=self.seed)
         self.env.action_space.seed(self.seed)
 
-    # Generate the dataset, frame by frame.
+
     def generate_dataset(self):
+        """
+        Generates a dataset by running episodes in the environment and logging observations.
+        By default, the action taken is a null action: 
+        - (0.0) for Pendulum;
+        - 1 for Acrobot;
+        - (0.0) for MountainCarContinuous.
+
+        Returns:
+            None
+        """
+
         np.random.seed(self.seed)
         if self.env_name == "Pendulum":
             action = np.array([0.0])  # null action
@@ -91,14 +178,16 @@ class GenerateDataset:
 
             print("Episode: ", episode)
             for step_index in range(self.max_steps):
+                # Generate the observations
                 obs = self.new_obs(frame0, frame1)
 
-                # Render new frame
+                # Render new frame: 
                 # run one timestep of the environment’s dynamics using the agent actions
                 next_state, _, terminated, _, _ = self.env.step(action)
                 frame2 = np.array(self.env.render())
                 next_obs = self.new_obs(frame1, frame2)
 
+                # Set the terminated flag if the episode is over
                 if step_index == self.max_steps - 1:
                     terminated = True
 
@@ -122,8 +211,19 @@ class GenerateDataset:
         self.env.close()
         print("Done.")
 
-    # Produce the new observation, stacking two consecutive frames.
+
     def new_obs(self, frame1, frame2):
+        """
+        Generate a new observation by stacking frames at different levels of fidelity.
+
+        Args:
+            frame1: The previous frame.
+            frame2: The current frame.
+
+        Returns:
+            A list of stacked frames at different levels of fidelity.
+        """
+
         obs = []
 
         for l in range(self.levels):
@@ -139,23 +239,61 @@ class GenerateDataset:
 
         return obs
 
-    # Log the observation in the logger, as a tuple with the current frame,
-    # the next one and the terminated status.
+
     def log_obs(self, episode, obs, next_obs, terminated, state, next_state):
+        """
+        Logs the observation as a tuple with: 
+        - the current frame;
+        - the next one;
+        - the terminated status;
+        - the current state;
+        - the next state.
+
+        Args:
+            episode (int): The episode number.
+            obs (list): A list of observations at each level.
+            next_obs (list): A list of next observations at each level.
+            terminated (bool): Indicates whether the episode is terminated.
+            state (object): The current state.
+            next_state (object): The next state.
+
+        Returns:
+            None
+        """
+
         self.logger[0].obslog(dict(obs=obs[0], next_obs=next_obs[0], terminated=terminated, state=state, next_state=next_state))
 
         for l in range(1, self.levels):
             if episode < self.num_episodes[l]:
                 self.logger[l].obslog(dict(obs=obs[l], next_obs=next_obs[l], terminated=terminated, state=state, next_state=next_state))
 
-    # Save locally the complete log as file.
+
     def save_log(self):
-        # Save the dataset
+        """
+        Save the dataset as a pickle file for each level of fidelity.
+        This method saves the dataset by iterating over the levels and calling the `save_obslog` method of each logger.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        
         for l in range(self.levels):
             self.logger[l].save_obslog(filename=self.data_filename[l])
 
-    # Save locally the frame as png.
+
     def save_image(self, frame, filename, show=False):
+        """
+        Save the given frame as an image.
+
+        Args:
+            frame: The frame to be saved as an image.
+            filename: The name of the file to save the image as.
+            show: A boolean indicating whether to display the image after saving (default is False).
+        """
+
         # Print the frame as image with Matplotlib
         plt.imshow(frame)
         plt.axis("off")  # hide the axis
@@ -173,11 +311,12 @@ if __name__ == "__main__":
     with open("config.yaml", "r") as file:
         args = yaml.safe_load(file)
     levels = len(args["training_dataset"])
+    seed = args["seed"]
 
     # Training set
-    train_set = GenerateDataset(levels=levels, test=False, png=False)
+    train_set = GenerateDataset(levels=levels, seed=seed, test=False, png=False)
     train_set.generate_dataset()
 
     # Test set
-    test_set = GenerateDataset(levels=levels, test=True, png=False)
+    test_set = GenerateDataset(levels=levels, seed=seed+1, test=True, png=False)
     test_set.generate_dataset()

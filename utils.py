@@ -1,17 +1,36 @@
 import numpy as np
 import pickle
-#import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
 
 
-# Saves and loads the data as a pickle file
 def save_pickle(filename, data):
+    """
+    Save data as a pickle file.
+
+    Parameters:
+    filename (str): The name of the file to save.
+    data: The data to be saved.
+
+    Returns:
+    None
+    """
+
     with open(filename, "wb") as f:
         pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
 
 
 def load_pickle(file):
+    """
+    Load data from a pickle file.
+
+    Parameters:
+    file (str): The path to the pickle file.
+
+    Returns:
+    data: The loaded data from the pickle file.
+    """
+
     if not file[-3:] == "pkl" and not file[-3:] == "kle":
         file = file + "pkl"
 
@@ -21,8 +40,22 @@ def load_pickle(file):
     return data
 
 
-# Concatenates two consecutive frames along the channel dimension
 def stack_frames(prev_frame, frame, size1=84, size2=84, crop={'portion':1, 'pos':1}, occlusion={'portion':0, 'pos':1}):
+    """
+    Stack two frames together along the channel dimension and perform optional cropping and occlusion.
+
+    Args:
+        prev_frame (numpy.ndarray): The previous frame.
+        frame (numpy.ndarray): The current frame.
+        size1 (int, optional): The desired width of the stacked frames. Defaults to 84.
+        size2 (int, optional): The desired height of the stacked frames. Defaults to 84.
+        crop (dict, optional): The cropping parameters. Defaults to {'portion':1, 'pos':1} (complete image).
+        occlusion (dict, optional): The occlusion parameters. Defaults to {'portion':0, 'pos':1} (no occlusion).
+
+    Returns:
+        numpy.ndarray: The stacked frames.
+    """
+
     if crop['portion'] < 1 and crop['portion'] >= 0:
         prev_frame = crop_frame(prev_frame, crop['portion'], crop['pos'])
         frame = crop_frame(frame, crop['portion'], crop['pos'])
@@ -37,13 +70,24 @@ def stack_frames(prev_frame, frame, size1=84, size2=84, crop={'portion':1, 'pos'
     return stacked_frames
 
 
-# Crops a frame. The function returns a new frame which is the
-# portion% corner of the original frame, with coordinates:
-#  - pos=1: top-right corner
-#  - pos=2: top-left corner
-#  - pos=3: bottom-left corner
-#  - pos=4: bottom-right corner
 def crop_frame(frame, portion=0.75, pos=1):
+    """
+    Crop a frame based on the specified portion and position.
+
+    Parameters:
+    - frame: numpy.ndarray
+        The input frame to be cropped.
+    - portion: float, optional
+        The portion of the frame to be retained after cropping. Default is 0.75.
+    - pos: int, optional
+        The position of the cropped portion within the frame. 
+        1: top-right, 2: top-left, 3: bottom-left, 4: bottom-right. Default is 1.
+
+    Returns:
+    - cropped_frame: numpy.ndarray
+        The cropped frame.
+    """
+
     size = frame.shape
     newsize = (portion * np.array(size)).astype(int)
 
@@ -59,13 +103,33 @@ def crop_frame(frame, portion=0.75, pos=1):
         print("Wrong choice of pos.")
         return frame
 
-# Adds a black occlusion to the frame. The function returns 
-# the original frame with a black square imposed to the:
-#  - pos=1: top-right corner
-#  - pos=2: top-left corner
-#  - pos=3: bottom-left corner
-#  - pos=4: bottom-right corner
+
 def add_occlusion(frame, portion=0.25, pos=1):
+    """
+    Add occlusion to a given frame.
+
+    Parameters:
+    - frame: numpy.ndarray
+        The input frame to which occlusion will be added.
+    - portion: float, optional
+        The portion of the frame to be occluded. Default is 0.25.
+    - pos: int, optional
+        The position of the occlusion. Valid values are 1, 2, 3, and 4.
+        1: Top right corner
+        2: Top left corner
+        3: Bottom left corner
+        4: Bottom right corner
+        Default is 1.
+
+    Returns:
+    - frame_with_occlusion: numpy.ndarray
+        The frame with occlusion added.
+
+    Note:
+    - The occluded portion of the frame will be set to 0, namely black.
+
+    """
+
     size = frame.shape
     newsize = (portion * np.array(size)).astype(int)
     frame_with_occlusion = frame.copy()
@@ -84,14 +148,36 @@ def add_occlusion(frame, portion=0.25, pos=1):
     return frame_with_occlusion
 
 
-# Returns a np.array random batch of dimension batch_size
 def sample_batch(data, batch_size=32):
+    """
+    Randomly samples a batch of data from the given dataset.
+
+    Parameters:
+    - data: The dataset from which to sample the batch.
+    - batch_size: The size of the batch to be sampled. Default is 32.
+
+    Returns:
+    - batch: The sampled batch of data as a numpy array.
+    """
+
     idxs = np.random.randint(0, len(data), batch_size)
     batch = [data[i] for i in idxs]
     return np.array(batch)
 
-# Plots a frame
+
 def plot_frame(frame, show=False, filename=""):
+    """
+    Plot a frame (image) and optionally save it to a file and/or display it.
+
+    Parameters:
+    - frame: The frame (image) to be plotted.
+    - show (optional): If True, display the plotted frame on the screen. Default is False.
+    - filename (optional): If provided, save the plotted frame to a file with the given filename. Default is an empty string.
+
+    Returns:
+    None
+    """
+
     plt.imshow(frame)
     plt.axis("off")  # hide the axis
 
@@ -106,8 +192,22 @@ def plot_frame(frame, show=False, filename=""):
 
     plt.close()
 
-# Plots the latent dimensions as functions of time
+
 def plot_latent_dims(z, dims=3, T=200, episodes=3, show=False, filename=""):
+    """
+    Plot the latent dimensions of the given data, as functions of time.
+
+    Args:
+        z (numpy.ndarray): The input data with shape (N, D), where N is the number of samples and D is the number of dimensions.
+        dims (int, optional): The number of latent dimensions to plot. Defaults to 3.
+        T (int, optional): The length of each episode. Defaults to 200.
+        episodes (int, optional): The number of episodes to plot. Defaults to 3.
+        show (bool, optional): Whether to display the plot. Defaults to False.
+        filename (str, optional): The filename to save the plot. Defaults to "".
+
+    Returns:
+        None
+    """
     # Loop over each latent dimension
     for i in range(dims):
         theta_i = z[:,i] # extract the current dimension (state variable) theta_i
