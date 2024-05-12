@@ -99,6 +99,6 @@ def estimate_ID(z_LF, z_next_LF, z_fwd_LF):
     
     print("ID_0=", ID_0, ", ID_1=", ID_1, ", ID_fwd=", ID_fwd)
     
-    ID = int(round((ID_0 + ID_1)/2 + ID_fwd))
+    ID = int(round((ID_0 + ID_1 + ID_fwd)/3))
 
     return ID
