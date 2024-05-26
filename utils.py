@@ -234,3 +234,25 @@ def plot_latent_dims(z, dims=3, T=200, episodes=3, show=False, filename=""):
             plt.show()
         
         plt.close()
+
+
+
+def len_of_episode(env_name):
+    """
+    Return the length of an episode for the given environment.
+
+    Args:
+        env_name (str): The name of the environment. Supported values are "Pendulum", "Acrobot", and "MountainCarContinuous".
+
+    Returns:
+        int: The length of an episode for the given environment.
+    """
+    if env_name == "Pendulum":
+        return 200  # Pendulum-v1 episode truncates at 200 time steps.
+    elif env_name == "Acrobot":
+        return 500  # Acrobot-v1 episode truncates at 500 time steps.
+    elif env_name == "MountainCarContinuous":
+        return 400  # MountainCarContinuous-v0 episode truncates at 999 time steps.
+    else:
+        assert False, "Invalid environment name. Test case not supported."
+        

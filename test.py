@@ -3,7 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import plot_latent_dims
+from utils import plot_latent_dims, len_of_episode
 from BuildModel import BuildModel
 
 
@@ -21,7 +21,8 @@ def test():
 
     MF_DKL = BuildModel(args, test=True)
     N = MF_DKL.N
-
+    L_episode = len_of_episode(args["env_name"])
+    N_episodes = len(MF_DKL.testing_dataset) // L_episode
 
     model_0 = MF_DKL.add_level(level=0, latent_dim=latent_dim)
     model_1 = MF_DKL.add_level(level=1, latent_dim=latent_dim)
@@ -46,7 +47,7 @@ def test():
     z_fwd_LF = z_fwd_0[0 : N[3]].detach() + z_fwd_1[0 : N[3]].detach() + z_fwd_2[0 : N[3]].detach()
 
     model_3, data_loader_3 = MF_DKL.test_level(level=3, model=model_3, z_LF=z_LF, z_next_LF=z_next_LF, z_fwd_LF=z_fwd_LF)
-    z_3, _, _, mu_x, mu_next = MF_DKL.eval_level(model=model_3, data_loader=data_loader_3)
+    z_3, z_next_3, z_fwd_3, mu_x, mu_next = MF_DKL.eval_level(model=model_3, data_loader=data_loader_3)
 
 
     # Preprocess reconstruction for the plots
@@ -69,11 +70,11 @@ def test():
     plot_latent_dims(z_3.detach().numpy(), dims=ID, episodes=3, show=False, filename=filepath+"latent_space/")
 
     # Plot of the reconstruction
-    l = 3   # level chosen
-    #for i in np.random.randint(N[l], size=50):
-    start = 200*np.random.randint(0,4) + np.random.randint(0,149)
+    l = len(obs_dim_1)-1   # level chosen
+    start = L_episode*np.random.randint(0,N_episodes) + np.random.randint(0,L_episode-51)
     end = start + 50
     for i in range(start,end):
+        # mu_x_rec, _, _, _ = model_1.predict_dynamics(z_next_3[i].unsqueeze(dim=0), z_fwd_LF[i])
         mu_x_rec, _, _, _ = model_3.predict_dynamics_mean(mu_next[i].unsqueeze(dim=0), z_fwd_LF[i])
         mu_x_rec = mu_x_rec.permute(0, 2, 3, 1) # move color channel to the end
         mu_x_rec = mu_x_rec.detach().numpy() # pass to numpy framework
