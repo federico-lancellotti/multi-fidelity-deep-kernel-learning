@@ -5,7 +5,7 @@ import yaml
 import matplotlib.pyplot as plt
 
 from logger import Logger
-from utils import stack_frames
+from utils import stack_frames, len_of_episode
 
 # Gymnasium is using np.bool8, which is deprecated.
 from warnings import filterwarnings
@@ -22,7 +22,7 @@ class GenerateDataset:
     Class for generating datasets for the multi-fidelity deep kernel learning model.
     It generates a dataset of frames from a Gymnasium environment at multiple levels of fidelity.
 
-    The input parameters are read from the config.yaml file and are:
+    The input parameters are stored in a dictionary with the following keys:
     - env_name: the name of the Gym environment;
     - obs_dim_1: the first dimension of the frame;
     - obs_dim_2: the second dimension of the frame;
@@ -41,7 +41,7 @@ class GenerateDataset:
     The class can also save the frames as PNG images in the png folder.
 
     Args:
-        levels (int): The number of levels of fidelity for the dataset. Default is 2.
+        args (dict): The dictionary of input parameters.
         seed (int): The seed for the random number generator. Default is 1.
         test (bool): Whether to generate a test set. Default is False.
         png (bool): Whether to save frames as PNG images. Default is False.
@@ -72,12 +72,12 @@ class GenerateDataset:
         save_image: Saves the given frame as an image.
     """
 
-    def __init__(self, levels=2, seed=1, test=False, png=False):
+    def __init__(self, args, seed=1, test=False, png=False):
         """
         Initializes the GenerateDataset class.
 
         Args:
-            levels (int): The number of levels for the dataset. Default is 2.
+            args (dict): The dictionary of input parameters.
             seed (int): The seed for the random number generator. Default is 1.
             test (bool): Flag indicating whether to generate a test set or not. Default is False.
             png (bool): Flag indicating whether to generate PNG images or not. Default is False.
@@ -85,34 +85,27 @@ class GenerateDataset:
 
         super(GenerateDataset, self).__init__()
 
-        self.levels = levels
+        self.levels = len(args["training_dataset"])
         self.seed = seed
         self.png = png
-
-        # Config inputs
-        with open("config.yaml", "r") as file:
-            args = yaml.safe_load(file)
 
         self.env_name = args["env_name"]
         if test:
             self.data_filename = [f"data_test_{i}.pkl" for i in range(self.levels)]
+            self.num_episodes = args["num_episodes_test"]
             print("Generating test set...")
         else:
             self.data_filename = [f"data_train_{i}.pkl" for i in range(self.levels)]
+            self.num_episodes = args["num_episodes"]
             print("Generating training set...")
 
         self.frame_dim1 = args["obs_dim_1"]
         self.frame_dim2 = args["obs_dim_2"]
         self.crop = args["crop"]
         self.occlusion = args["occlusion"]
-        self.num_episodes = args["num_episodes"]
 
-        if self.env_name == "Pendulum":
-            self.max_steps = 200  # Pendulum-v1 episode truncates at 200 time steps.
-        elif self.env_name == "Acrobot":
-            self.max_steps = 500  # Acrobot-v1 episode truncates at 500 time steps.
-        elif self.env_name == "MountainCarContinuous":
-            self.max_steps = 400  # MountainCarContinuous-v0 episode truncates at 999 time steps.
+        # Set the maximum number of steps in an episode, according to the chosen environment
+        self.max_steps = len_of_episode(self.env_name)
 
         # Call the set_environment method
         self.set_environment()
@@ -143,6 +136,8 @@ class GenerateDataset:
             self.env = gym.make("Acrobot-v1", render_mode="rgb_array")
         elif self.env_name == "MountainCarContinuous":
             self.env = gym.make("MountainCarContinuous-v0", render_mode="rgb_array")
+        else:
+            assert False, "Invalid environment name. Test case not supported."
 
         # Set seeds
         self.env.reset(seed=self.seed)
@@ -168,6 +163,8 @@ class GenerateDataset:
             action = 1  # null action
         elif self.env_name == "MountainCarContinuous":
             action = np.array([0.0])  # null action
+        else:
+            assert False, "Invalid environment name. Test case not supported."
 
         for episode in range(self.num_episodes[0]):
             # Reset the environment with new (random) initial conditions
@@ -310,13 +307,12 @@ class GenerateDataset:
 if __name__ == "__main__":
     with open("config.yaml", "r") as file:
         args = yaml.safe_load(file)
-    levels = len(args["training_dataset"])
     seed = args["seed"]
 
     # Training set
-    train_set = GenerateDataset(levels=levels, seed=seed, test=False, png=False)
+    train_set = GenerateDataset(args=args, seed=seed, test=False, png=False)
     train_set.generate_dataset()
 
     # Test set
-    test_set = GenerateDataset(levels=levels, seed=seed+1, test=True, png=False)
+    test_set = GenerateDataset(args=args, seed=seed+1, test=True, png=False)
     test_set.generate_dataset()
