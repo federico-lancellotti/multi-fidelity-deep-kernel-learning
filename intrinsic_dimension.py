@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from sklearn.neighbors import NearestNeighbors
 
 
@@ -33,7 +34,7 @@ def Levina_Bickel(dists, k):
     dim (float): The estimated intrinsic dimensionality of the dataset.
     """
     
-    m = np.log(dists[:, k : k + 1] / dists[:, 1:k])
+    m = np.log(dists[:, k:k+1] / dists[:, 1:k])
     m = (k - 2) / np.sum(m, axis=1)
     dim = np.mean(m)
     return dim
@@ -60,6 +61,10 @@ def eval_id(X, k_list=20, n_jobs=4):
         If multiple values of k_list are provided, a numpy array is returned.
 
     """
+
+    # Convert input to numpy array if it is a PyTorch tensor
+    if isinstance(X, torch.Tensor):
+        X = X.cpu().numpy()
 
     if np.isscalar(k_list):
         k_list = np.array([k_list])
