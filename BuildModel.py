@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import os
 import gpytorch
@@ -8,7 +9,7 @@ from models import SVDKL_AE_latent_dyn
 from variational_inference import VariationalKL
 from utils import load_pickle
 from trainer import train
-from data_loader import DataLoader
+from data_loader import BaseDataLoader, GymDataLoader, PDEDataLoader
 
 import warnings
 warnings.filterwarnings("ignore", message="torch.sparse.SparseTensor")
@@ -74,7 +75,15 @@ class BuildModel:
             test (bool, optional): Whether the model is being used for testing. Defaults to False.
         """
 
+        self.test = test
+
         self.use_gpu = use_gpu
+        self.device = torch.device("cpu")
+        if self.use_gpu:
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
         
         # Set parameters
         self.seed = args["seed"]
@@ -111,7 +120,7 @@ class BuildModel:
         self.data = []
         self.N = []
 
-        if test: 
+        if self.test: 
             for l in range(levels):
                 self.folder.append(os.path.join(self.directory + "/Data", self.testing_dataset[l]))
         else:
@@ -122,7 +131,7 @@ class BuildModel:
             self.data.append(load_pickle(self.folder[l]))
             self.N.append(len(self.data[l]))
 
-        if not test:
+        if not self.test:
             # Set the string with date-time for the saving folder
             now = datetime.now()
             self.folder_date = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
@@ -131,6 +140,15 @@ class BuildModel:
             self.save_pth_dir = self.directory + "/Results/" + self.env_name + "/" + self.folder_date + "/"
             if not os.path.exists(self.save_pth_dir):
                 os.makedirs(self.save_pth_dir)
+
+        # Select the correct data loader with respect to the environment
+        case_to_loader = {
+            "Pendulum": GymDataLoader,
+            "Acrobot": GymDataLoader,
+            "MountainCarContinuous": GymDataLoader,
+            "reaction-diffusion": PDEDataLoader,
+        }
+        self.data_loader = case_to_loader.get(self.env_name, BaseDataLoader)
 
 
     def add_level(self, level, latent_dim, latent_dim_LF=0):
@@ -196,12 +214,9 @@ class BuildModel:
             z_fwd_LF = torch.zeros((self.N[level], latent_dim))
 
         if self.use_gpu:
+            model = model.to(self.device)
             if torch.cuda.is_available():
-                model = model.cuda()
                 gc.collect()  # NOTE: Critical to avoid GPU leak
-            elif torch.backends.mps.is_available():  # on Apple Silicon
-                mps_device = torch.device("mps")
-                model.to(mps_device)
 
         # Define the variational loss
         variational_kl_term = VariationalKL(
@@ -255,7 +270,8 @@ class BuildModel:
         date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
 
         # Define the data loader for training
-        train_loader = DataLoader(
+        
+        train_loader = self.data_loader(
             self.data[level],
             z_LF,
             z_next_LF,
@@ -265,7 +281,7 @@ class BuildModel:
 
         # Train the model
         if self.training:
-            print("Start training...")
+            print("Start training...", flush=True)
             for epoch in range(1, self.max_epoch + 1):
                 with gpytorch.settings.cholesky_jitter(self.jitter):
                     train(
@@ -278,6 +294,7 @@ class BuildModel:
                         variational_kl_term_fwd=variational_kl_term_fwd,
                         k1=self.k1,
                         beta=self.k2,
+                        use_gpu=self.use_gpu,
                     )
 
                     scheduler_1.step()
@@ -363,6 +380,73 @@ class BuildModel:
         return model, data_loader
 
 
+    def get_latent_representations(self, model, data_loader, idx=range(100), step=600):
+        """
+        Get the latent representations of the samples in the data loader.
+
+        Args:
+            model (Model): The model to use for the latent representation.
+            data_loader (DataLoader): The data loader containing the samples.
+            idx (list, optional): The indices of the samples to get the latent representation of. Defaults to range(100).
+            step (int, optional): The number of samples to evaluate at a time. Defaults to 600.
+
+        Returns:
+            tuple: A tuple containing: 
+                    - the latent representations of the samples at time t-1 and t, 
+                    - the next latent representations at time t and t+1, and 
+                    - the forward predicted latent representations at time t and t+1.
+        """
+
+        # Set the model to evaluation mode
+        model.eval()
+        model.AE_DKL.likelihood.eval()
+        model.fwd_model_DKL.likelihood.eval()
+
+        # Clear the cache
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        # Set the lists to store the latent representations
+        z_list = []
+        z_next_list = []
+        z_fwd_list = []
+
+        # Split the indices into chunks
+        chunks = [idx[i:min(i+step,len(idx))] for i in range(0, len(idx), step)]
+        
+        for idx_chunk in chunks:
+            # Sample the batch with the given set of indices
+            pred_samples = data_loader.sample_batch_with_idx(idx_chunk)
+
+            # Prepare the data for the model evaluation
+            pred_samples["obs"] = pred_samples["obs"].permute(0, 3, 1, 2).to(self.device)
+            pred_samples["next_obs"] = pred_samples["next_obs"].permute(0, 3, 1, 2).to(self.device)
+            pred_samples["z_LF"] = pred_samples["z_LF"].to(self.device)
+            pred_samples["z_next_LF"] = pred_samples["z_next_LF"].to(self.device)
+            pred_samples["z_fwd_LF"] = pred_samples["z_fwd_LF"].to(self.device)
+
+            # Evaluate the model on the current batch
+            _, _, _, z, _, _, _, z_next, _, _, _, _, _, z_fwd, _ = model(
+                pred_samples["obs"],
+                pred_samples["z_LF"],
+                pred_samples["next_obs"],
+                pred_samples["z_next_LF"],
+                pred_samples["z_fwd_LF"],
+            )
+
+            # Store the new latent representations
+            z_list.append(z.detach())
+            z_next_list.append(z_next.detach())
+            z_fwd_list.append(z_fwd.detach())
+
+        # Concatenate the latent representations
+        z = torch.cat(z_list, dim=0)
+        z_next = torch.cat(z_next_list, dim=0)
+        z_fwd = torch.cat(z_fwd_list, dim=0)
+
+        return z, z_next, z_fwd
+
+
     def eval_level(self, model, data_loader):
         """
         Evaluate the model at a given level.
@@ -380,20 +464,37 @@ class BuildModel:
                 - mu_next (Tensor): The mean of the next observed samples, at time t and t+1.
         """
 
+        # Set the model to evaluation mode
         model.eval()
         model.AE_DKL.likelihood.eval()
         model.fwd_model_DKL.likelihood.eval()
 
-        pred_samples = data_loader.get_all_samples()
-        pred_samples["obs"] = pred_samples["obs"].permute(0, 3, 1, 2)
-        pred_samples["next_obs"] = pred_samples["next_obs"].permute(0, 3, 1, 2)
+        # Clear the cache
+        torch.cuda.empty_cache()
+        gc.collect()
 
-        mu_x, _, _, _, z, _, mu_next, _, z_next, _, _, _, _, z_fwd, mu_x_fwd = model(
+        # Get all the samples
+        pred_samples = data_loader.get_all_samples()
+        pred_samples["obs"] = pred_samples["obs"].permute(0, 3, 1, 2).to(self.device)
+        pred_samples["next_obs"] = pred_samples["next_obs"].permute(0, 3, 1, 2).to(self.device)
+        pred_samples["z_LF"] = pred_samples["z_LF"].to(self.device)
+        pred_samples["z_next_LF"] = pred_samples["z_next_LF"].to(self.device)
+        pred_samples["z_fwd_LF"] = pred_samples["z_fwd_LF"].to(self.device)
+
+        # Evaluate the model on the current batch
+        mu_x, _, _, _, z, _, mu_next, _, z_next, _, _, _, _, z_fwd, _ = model(
             pred_samples["obs"],
             pred_samples["z_LF"],
             pred_samples["next_obs"],
             pred_samples["z_next_LF"],
             pred_samples["z_fwd_LF"],
         )
+
+        # Detach the tensors
+        z = z.detach()
+        z_next = z_next.detach()
+        z_fwd = z_fwd.detach()
+        mu_x = mu_x.detach()
+        mu_next = mu_next.detach()
 
         return z, z_next, z_fwd, mu_x, mu_next

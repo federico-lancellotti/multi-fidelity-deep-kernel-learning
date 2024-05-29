@@ -4,6 +4,7 @@ import yaml
 
 from intrinsic_dimension import estimate_ID
 from BuildModel import BuildModel
+from utils import align_pde, get_length
 
 
 # for 84x84 inputs
@@ -38,51 +39,32 @@ def main():
     MF_DKL = BuildModel(args, use_gpu=use_gpu)
     N = MF_DKL.N
 
+    # Compute indices to align the levels of fidelity in time
+    T = args['T']
+    dt = args['dt']
+    mu = args['mu']
+
+    idx = align_pde(len_0=int(T[0]/dt), len_1=int(T[1]/dt), n_cases_0=get_length(mu[0]), n_cases_1=get_length(mu[1]))
+
 
     # LEVEL OF FIDELITY: 0
     model_0 = MF_DKL.add_level(level=0, latent_dim=latent_dim)
     model_0, train_loader_0 = MF_DKL.train_level(level=0, model=model_0)
-    z_0, z_next_0, z_fwd_0, _, _ = MF_DKL.eval_level(model_0, train_loader_0)
+    z_0, z_next_0, z_fwd_0 = MF_DKL.get_latent_representations(model_0, train_loader_0, idx)
 
-    z_0 = z_0.detach()
-    z_next_0 = z_next_0.detach()
-    z_fwd_0 = z_fwd_0.detach()
-    ID_0 = estimate_ID(z_0, z_next_0, z_fwd_0)
-
-
-    # LEVEL OF FIDELITY: 1
-    model_1 = MF_DKL.add_level(level=1, latent_dim=latent_dim)
-    model_1, train_loader_1 = MF_DKL.train_level(level=1, model=model_1)
-    z_1, z_next_1, z_fwd_1, _, _ = MF_DKL.eval_level(model_1, train_loader_1)
-
-    z_1 = z_1.detach()
-    z_next_1 = z_next_1.detach()
-    z_fwd_1 = z_fwd_1.detach()
-    ID_1 = estimate_ID(z_1, z_next_1, z_fwd_1)
-
-
-    # LEVEL OF FIDELITY: 2
-    model_2 = MF_DKL.add_level(level=2, latent_dim=latent_dim)
-    model_2, train_loader_2 = MF_DKL.train_level(level=2, model=model_2)
-    z_2, z_next_2, z_fwd_2, _, _ = MF_DKL.eval_level(model_2, train_loader_2)
-
-    z_2 = z_2.detach()
-    z_next_2 = z_next_2.detach()
-    z_fwd_2 = z_fwd_2.detach()
-    ID_2 = estimate_ID(z_2, z_next_2, z_fwd_2)
+    ID = estimate_ID(z_0, z_next_0, z_fwd_0)
 
 
     # Compute a summary of the latent representation and a final estimate of ID
-    z_LF = z_0[0 : N[3]] + z_1[0 : N[3]] + z_2[0 : N[3]]
-    z_next_LF = z_next_0[0 : N[3]] + z_next_1[0 : N[3]] + z_next_2[0 : N[3]]
-    z_fwd_LF = z_fwd_0[0 : N[3]] + z_fwd_1[0 : N[3]] + z_fwd_2[0 : N[3]]
+    z_LF = z_0
+    z_next_LF = z_next_0
+    z_fwd_LF = z_fwd_0
 
-    ID = int((ID_0 + ID_1 + ID_2) / 3) 
     print("ID = ", ID)
 
-    # LEVEL OF FIDELITY: 3
-    model_3 = MF_DKL.add_level(level=3, latent_dim=ID, latent_dim_LF=latent_dim)
-    model_3 = MF_DKL.train_level(level=3, model=model_3, z_LF=z_LF, z_next_LF=z_next_LF, z_fwd_LF=z_fwd_LF)
+    # LEVEL OF FIDELITY: 1
+    model_1 = MF_DKL.add_level(level=1, latent_dim=ID, latent_dim_LF=latent_dim)
+    model_1 = MF_DKL.train_level(level=1, model=model_1, z_LF=z_LF, z_next_LF=z_next_LF, z_fwd_LF=z_fwd_LF)
 
 
     print("##############################################")

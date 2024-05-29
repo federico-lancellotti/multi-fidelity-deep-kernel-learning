@@ -1,23 +1,34 @@
-# seed
+# Seed
 seed: 1
 
-# dataset generator
-env_name: "Acrobot"  # Available: Pendulum-v1, Acrobot-v1, MountainCarContinuous-v0
-num_episodes: {0: 10, 1: 5, 2: 5, 3: 3}   # num_episode per level of fidelity
-crop: [{'portion': 1, 'pos': 4}, {'portion': 0.6, 'pos': 4}, {'portion': 1, 'pos': 4}, {'portion': 1, 'pos': 4}]
-occlusion: [{'portion': 0, 'pos': 4}, {'portion': 0, 'pos': 4}, {'portion': 0.45, 'pos': 3}, {'portion': 0, 'pos': 4}]
+# Dataset generator
+env_name: "reaction-diffusion"  # Available: Pendulum, Acrobot, MountainCarContinuous, reaction-diffusion
 
-# training hyperparameters
+## Gym environment parameters
+num_episodes: {0: 3, 1: 3}
+num_episodes_test: {0: 3, 1: 3}
+crop: [{'portion': 1, 'pos': 4}, {'portion': 1, 'pos': 4}]
+occlusion: [{'portion': 0, 'pos': 4}, {'portion': 0, 'pos': 4}]
+
+## PDE environment parameters
+d: {0: 0.05, 1: 0.05} 
+mu: {0: 1, 1: 1}  
+T: {0: 150, 1: 50}
+T_test: 20
+dt: 0.05
+L: 40
+n: {0: 32, 1: 100}  # grid size, should be the same as obs_dim_1 and obs_dim_2
+
+
+# Training hyperparameters
 batch_size: 50
 max_epoch: 1
 
 rho: 1 
 
 training: true
-# plotting: false
-# num_samples_plot: 200
 
-# learning rate
+# Learning rate
 lr: 3e-4
 lr_gp: 1e-2
 lr_gp_lik: 1e-2
@@ -31,27 +42,25 @@ grid_size: 32
 latent_dim: 20
 act_dim: 1
 state_dim: 3
-obs_dim_1: {0: 42, 1: 42, 2: 84, 3: 84}
-obs_dim_2: {0: 42, 1: 42, 2: 84, 3: 84}
+obs_dim_1: {0: 32, 1: 100}
+obs_dim_2: {0: 32, 1: 100}
 obs_dim_3: 6
 h_dim: 256
-out_dim: {128: 57, 84: 35, 64: 25, 42: 14, 24: 5}
 
 # experiment and model type
-# exp: "Acrobot"
-training_dataset: {0: "data_train_0.pkl", 1: "data_train_1.pkl", 2: "data_train_2.pkl", 3: "data_train_3.pkl"}
-testing_dataset: {0: "data_test_0.pkl", 1: "data_test_1.pkl", 2: "data_test_2.pkl", 3: "data_test_3.pkl"}
+training_dataset: {0: "reaction-diffusion/data_train_0.pkl", 1: "reaction-diffusion/data_train_1.pkl"}
+testing_dataset: {0: "reaction-diffusion/data_test_0.pkl", 1: "reaction-diffusion/data_test_1.pkl"}
 
 log_interval: 50
 
 jitter: 1e-8
 
 # weights
-results_folder: "2024-04-21_16h-27m-02s"
-weights_filename: ["MFDKL_dyn_level0_42_2024-04-21_16h-27m-04s",
-                  "MFDKL_dyn_level1_42_2024-04-22_01h-32m-34s",
-                  "MFDKL_dyn_level2_84_2024-04-22_06h-24m-23s",
-                  "MFDKL_dyn_level3_84_2024-04-22_21h-32m-05s"]
-ID: 5
+results_folder: "2024-05-06_15h-37m-35s"
+weights_filename: ["MFDKL_dyn_level0_42_2024-05-06_15h-37m-37s",
+                   "MFDKL_dyn_level1_42_2024-05-07_13h-22m-43s",
+                   "MFDKL_dyn_level2_84_2024-05-08_00h-19m-56s",
+                   "MFDKL_dyn_level3_84_2024-05-08_15h-41m-43s"]
+ID: 6
 
 
