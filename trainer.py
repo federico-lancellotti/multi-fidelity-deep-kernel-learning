@@ -3,8 +3,6 @@ import numpy as np
 
 from losses import loss_bce, kl_divergence_balance
 
-use_gpu = True
-
 
 def train(
     model,
@@ -16,6 +14,7 @@ def train(
     variational_kl_term_fwd,
     k1=1,
     beta=1,
+    use_gpu=False,
 ):
     """
     Trains the model using the given training data.
@@ -36,7 +35,10 @@ def train(
     model.AE_DKL.likelihood.train()
     model.fwd_model_DKL.likelihood.train()
 
-    # if use_gpu: 
+    device = torch.device("cpu")
+    if use_gpu: 
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
     #     if torch.backends.mps.is_available(): # on Apple Silicon
     #         mps_device = torch.device("mps")
 
@@ -48,21 +50,21 @@ def train(
     train_loss = 0
     train_loss_vae = 0
     train_loss_varKL_vae = 0
-    train_loss_fwd_rec = 0
+    # train_loss_fwd_rec = 0
     train_loss_fwd_res = 0
     train_loss_varKL_fwd = 0
 
     sample_size = train_data.size
     for i in range(int(sample_size / batch_size)):
         # Batch
-        batch = train_data.sample_batch(batch_size)
+        batch, _ = train_data.sample_batch(batch_size)
 
         # Permutation to (batch_size, channels, height, width)
-        obs = batch["obs"].permute(0, 3, 1, 2)
-        next_obs = batch["next_obs"].permute(0, 3, 1, 2)
-        z_LF = batch["z_LF"]
-        z_next_LF = batch["z_next_LF"]
-        z_fwd_LF = batch["z_fwd_LF"]
+        obs = batch["obs"].permute(0, 3, 1, 2).to(device)
+        next_obs = batch["next_obs"].permute(0, 3, 1, 2).to(device)
+        z_LF = batch["z_LF"].to(device)
+        z_next_LF = batch["z_next_LF"].to(device)
+        z_fwd_LF = batch["z_fwd_LF"].to(device)
 
         # Initialization of the gradients
         optimizer.zero_grad()
@@ -77,7 +79,7 @@ def train(
         loss_varKL_vae = variational_kl_term(beta=1)
 
         # compute forward model loss (KL divergence) + variational inference
-        loss_fwd_rec = loss_bce(mu_x_fwd, next_obs)
+        # loss_fwd_rec = loss_bce(mu_x_fwd, next_obs)
         loss_fwd_res = -beta * kl_divergence_balance(
             model.AE_DKL.likelihood(res_target).mean,
             model.AE_DKL.likelihood(res_target).variance,
@@ -88,7 +90,7 @@ def train(
         )
         loss_varKL_fwd = variational_kl_term_fwd(beta=1)
 
-        #  loss = loss_vae + loss_fwd_rec - loss_fwd_res
+        # loss = loss_vae + loss_fwd_rec - loss_fwd_res
         loss = loss_vae - loss_fwd_res
 
         loss_varKL_v = -loss_varKL_vae
@@ -102,7 +104,7 @@ def train(
         train_loss += loss.item()
         train_loss_vae += loss_vae.item()
         train_loss_varKL_vae += loss_varKL_v.item()
-        train_loss_fwd_rec += loss_fwd_rec.item()
+        # train_loss_fwd_rec += loss_fwd_rec.item()
         train_loss_fwd_res += -loss_fwd_res.item()
         train_loss_varKL_fwd += loss_varKL_f.item()
 
@@ -111,9 +113,9 @@ def train(
         optimizer_var1.step()
         optimizer_var2.step()
 
-    print('====> Epoch: {} Average loss: {:.4f}'.format(num_epochs, train_loss / sample_size))
-    print('====> Epoch: {} Average VAE loss: {:.4f}'.format(num_epochs, train_loss_vae / sample_size))
-    print('====> Epoch: {} Average variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_vae / sample_size))
-    # print('====> Epoch: {} Average FWD reconstruction loss: {:.4f}'.format(num_epochs, train_loss_fwd_rec / sample_size))
-    print('====> Epoch: {} Average FWD residuals loss: {:.4f}'.format(num_epochs, train_loss_fwd_res / sample_size))
-    print('====> Epoch: {} Average FWD variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_fwd / sample_size))
+    print('====> Epoch: {} Average loss: {:.4f}'.format(num_epochs, train_loss / sample_size), flush=True)
+    print('====> Epoch: {} Average VAE loss: {:.4f}'.format(num_epochs, train_loss_vae / sample_size), flush=True)
+    print('====> Epoch: {} Average variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_vae / sample_size), flush=True)
+    # print('====> Epoch: {} Average FWD reconstruction loss: {:.4f}'.format(num_epochs, train_loss_fwd_rec / sample_size), flush=True)
+    print('====> Epoch: {} Average FWD residuals loss: {:.4f}'.format(num_epochs, train_loss_fwd_res / sample_size), flush=True)
+    print('====> Epoch: {} Average FWD variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_fwd / sample_size), flush=True)
