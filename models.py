@@ -1,20 +1,11 @@
-from typing import Union
-from linear_operator.operators import LinearOperator
 import torch
-from torch import Tensor
-from torch.distributions import Distribution
 import torch.nn as nn
 import torch.nn.functional as F
 import gpytorch
 import math
-import yaml
-import numpy as np
 
-from intrinsic_dimension import eval_id
 
-with open("config.yaml", "r") as file:
-    args = yaml.safe_load(file)
-OUT_DIM = args["out_dim"]
+OUT_DIM = {128: 57, 100: 43, 84: 35, 64: 25, 42: 14, 32: 9, 24: 5}
 
 ################################
 ##### Reconstruction model #####
