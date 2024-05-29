@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 from PIL import Image
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 
 def save_pickle(filename, data):
@@ -165,7 +166,7 @@ def sample_batch(data, batch_size=32):
     return np.array(batch)
 
 
-def plot_frame(frame, show=False, filename=""):
+def plot_frame(frame, show=False, filename="", pause=0):
     """
     Plot a frame (image) and optionally save it to a file and/or display it.
 
@@ -188,9 +189,10 @@ def plot_frame(frame, show=False, filename=""):
 
     # Print to screen
     if show:
-        plt.show()
-
-    plt.close()
+        if pause:
+            plt.pause(pause)
+        else:
+            plt.show()
 
 
 def plot_latent_dims(z, dims=3, T=200, episodes=3, show=False, filename=""):
@@ -236,7 +238,6 @@ def plot_latent_dims(z, dims=3, T=200, episodes=3, show=False, filename=""):
         plt.close()
 
 
-
 def len_of_episode(env_name):
     """
     Return the length of an episode for the given environment.
@@ -256,3 +257,66 @@ def len_of_episode(env_name):
     else:
         assert False, "Invalid environment name. Test case not supported."
         
+
+def heatmap_to_image(u, u_min=-1, u_max=1):
+    """
+    Convert a matrix to its heatmap as image.
+
+    Args:
+        u (numpy.ndarray): The matrix to be converted to a heatmap.
+        u_min (float, optional): The minimum value of the matrix. Defaults to -1.
+        u_max (float, optional): The maximum value of the matrix. Defaults to 1.
+
+    Returns:
+        Image: The heatmap image.
+    """
+
+    u = (u - u_min) / (u_max - u_min)
+    u = cm.viridis(u)[:,:,:3]
+    u = np.uint8(u*255)
+
+    return u
+
+
+def align_pde(len_0, len_1, n_cases_0, n_cases_1):
+    """
+    Compute indices to align the levels of fidelity in time.
+
+    Args:
+        len_0 (int): The length of observation of one episode at level of fidelity 0.
+        len_1 (int): The length of observation of one episode at level of fidelity 1.
+        n_cases_0 (int): The number of episodes for level 0.
+        n_cases_1 (int): The number of episodes for level 1.
+
+    Returns:
+        numpy.ndarray: The indices to align the levels of fidelity in time.
+    """
+
+    idx = []
+    for i in range(n_cases_1):
+        start = i*len_0
+        new_idx = range(start, start+len_1-2)
+        idx.append(new_idx)
+
+    idx = np.array(idx).flatten()
+
+    return idx
+
+
+def get_length(x):
+    """
+    Get the length of a variable.
+
+    Args:
+        x: The variable to get the length of.
+
+    Returns:
+        int: The length of the variable.
+    """
+
+    if isinstance(x, list):
+        return len(x)
+    elif isinstance(x, (int, float)):
+        return 1
+    else:
+        raise TypeError("The variable is not a list or a number.")
