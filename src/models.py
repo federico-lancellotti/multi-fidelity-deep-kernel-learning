@@ -7,10 +7,6 @@ import math
 
 OUT_DIM = {128: 57, 100: 43, 84: 35, 64: 25, 42: 14, 32: 9, 24: 5}
 
-################################
-##### Reconstruction model #####
-################################
-
 
 class Encoder(nn.Module):
     """
@@ -344,10 +340,6 @@ class SVDKL_AE(gpytorch.Module):
 
         return mu_hat, var_hat, res, mean, covar, z
 
-
-################################
-######### Forward model ########
-################################
     
 class SVDKL_AE_latent_dyn(nn.Module):
     """

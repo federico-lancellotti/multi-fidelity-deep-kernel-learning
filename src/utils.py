@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import pickle
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -320,3 +321,7 @@ def get_length(x):
         return 1
     else:
         raise TypeError("The variable is not a list or a number.")
+
+
+def check_indices(tensor, indices):
+    assert torch.all(indices >= 0) and torch.all(indices < tensor.size(0)), "Index out of bounds"

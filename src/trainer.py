@@ -15,6 +15,7 @@ def train(
     k1=1,
     beta=1,
     use_gpu=False,
+    flush=False,
 ):
     """
     Trains the model using the given training data.
@@ -113,9 +114,9 @@ def train(
         optimizer_var1.step()
         optimizer_var2.step()
 
-    print('====> Epoch: {} Average loss: {:.4f}'.format(num_epochs, train_loss / sample_size), flush=True)
-    print('====> Epoch: {} Average VAE loss: {:.4f}'.format(num_epochs, train_loss_vae / sample_size), flush=True)
-    print('====> Epoch: {} Average variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_vae / sample_size), flush=True)
-    # print('====> Epoch: {} Average FWD reconstruction loss: {:.4f}'.format(num_epochs, train_loss_fwd_rec / sample_size), flush=True)
-    print('====> Epoch: {} Average FWD residuals loss: {:.4f}'.format(num_epochs, train_loss_fwd_res / sample_size), flush=True)
-    print('====> Epoch: {} Average FWD variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_fwd / sample_size), flush=True)
+    print('====> Epoch: {} Average loss: {:.4f}'.format(num_epochs, train_loss / sample_size), flush=flush)
+    print('====> Epoch: {} Average VAE loss: {:.4f}'.format(num_epochs, train_loss_vae / sample_size), flush=flush)
+    print('====> Epoch: {} Average variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_vae / sample_size), flush=flush)
+    # print('====> Epoch: {} Average FWD reconstruction loss: {:.4f}'.format(num_epochs, train_loss_fwd_rec / sample_size), flush=flush)
+    print('====> Epoch: {} Average FWD residuals loss: {:.4f}'.format(num_epochs, train_loss_fwd_res / sample_size), flush=flush)
+    print('====> Epoch: {} Average FWD variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_fwd / sample_size), flush=flush)

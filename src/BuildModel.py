@@ -9,7 +9,7 @@ from models import SVDKL_AE_latent_dyn
 from variational_inference import VariationalKL
 from utils import load_pickle
 from trainer import train
-from data_loader import BaseDataLoader, GymDataLoader, PDEDataLoader
+from src.DataLoader import BaseDataLoader, GymDataLoader, PDEDataLoader
 
 import warnings
 warnings.filterwarnings("ignore", message="torch.sparse.SparseTensor")
@@ -23,6 +23,7 @@ class BuildModel:
         args (dict): Dictionary containing the model parameters.
         use_gpu (bool, optional): Flag indicating whether to use GPU for training. Defaults to False.
         test (bool, optional): Flag indicating whether the model is being used for testing. Defaults to False.
+        flush (bool, optional): Flag indicating whether to flush the print statements. Defaults to True.
 
     Attributes:
         use_gpu (bool): Flag indicating whether to use GPU for training.
@@ -64,7 +65,7 @@ class BuildModel:
         eval_level(model, data_loader): Evaluates a level of fidelity in the model.
     """
 
-    def __init__(self, args, use_gpu=False, test=False):
+    def __init__(self, args, use_gpu=False, test=False, flush=True):
         """
         Initialize the BuildModel object.
         Set the parameters for the model and load the data.
@@ -73,9 +74,11 @@ class BuildModel:
             args (dict): A dictionary containing the parameters for the model.
             use_gpu (bool, optional): Whether to use GPU for computations. Defaults to False.
             test (bool, optional): Whether the model is being used for testing. Defaults to False.
+            flush (bool, optional): Whether to flush the print statements. Defaults to True.
         """
 
         self.test = test
+        self.flush = flush  # whether to flush the print statements
 
         self.use_gpu = use_gpu
         self.device = torch.device("cpu")
@@ -283,7 +286,7 @@ class BuildModel:
         if self.training:
             print("Start training...", flush=True)
             for epoch in range(1, self.max_epoch + 1):
-                with gpytorch.settings.cholesky_jitter(self.jitter):
+                with gpytorch.settings.cholesky_jitter(self.jitter): # for numerical stability
                     train(
                         model=model,
                         train_data=train_loader,
@@ -295,6 +298,7 @@ class BuildModel:
                         k1=self.k1,
                         beta=self.k2,
                         use_gpu=self.use_gpu,
+                        flush=self.flush,
                     )
 
                     scheduler_1.step()
@@ -361,9 +365,9 @@ class BuildModel:
             directory + "/Results/" + self.env_name + "/" + self.results_folder + "/", self.weights_filename[level] + ".pth"
         )
         
-        model.load_state_dict(torch.load(weights_folder)["model"])
-        model.AE_DKL.likelihood.load_state_dict(torch.load(weights_folder)["likelihood"])
-        model.fwd_model_DKL.likelihood.load_state_dict(torch.load(weights_folder)["likelihood_fwd"])
+        model.load_state_dict(torch.load(weights_folder, map_location=self.device)["model"])
+        model.AE_DKL.likelihood.load_state_dict(torch.load(weights_folder, map_location=self.device)["likelihood"])
+        model.fwd_model_DKL.likelihood.load_state_dict(torch.load(weights_folder, map_location=self.device)["likelihood_fwd"])
 
         # Define dummy previous level of fidelity
         if z_LF == None or z_next_LF == None or z_fwd_LF == None:
@@ -373,7 +377,7 @@ class BuildModel:
             z_fwd_LF = torch.zeros((N, latent_dim))
 
         # Define the data loader for testing
-        data_loader = DataLoader(
+        data_loader = self.data_loader(
             data, z_LF, z_next_LF, z_fwd_LF, obs_dim=(self.obs_dim_1[level], self.obs_dim_2[level], self.obs_dim_3)
         )
 

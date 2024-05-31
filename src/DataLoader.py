@@ -1,5 +1,5 @@
-import numpy as np
 import torch
+from utils import check_indices
 
 
 class BaseDataLoader:
@@ -50,16 +50,12 @@ class BaseDataLoader:
         self.z_LF = z_LF
         self.z_next_LF = z_next_LF
         self.z_fwd_LF = z_fwd_LF
-        #self.state = torch.zeros([int(self.size), data[0]["state"].shape[0]], dtype=torch.float32)
-        #self.next_state = torch.zeros([int(self.size), data[0]["next_state"].shape[0]], dtype=torch.float32)
         self.done = torch.zeros(int(self.size), dtype=bool)
 
         pos = 0
         for d in data:
             self.obs[pos] = torch.tensor(d["obs"], dtype=torch.float32) / 255
             self.next_obs[pos] = torch.tensor(d["next_obs"], dtype=torch.float32) / 255
-            #self.state[pos] = torch.tensor(d["state"])
-            #self.next_state[pos] = torch.tensor(d["next_state"])
             self.done[pos] = d["terminated"]
             pos += 1
 
@@ -89,6 +85,14 @@ class BaseDataLoader:
             if self.done[i] == True:
                 idx[i] = idx[i] - 1
 
+        # Check if the indices are within bounds
+        check_indices(self.obs, idx)
+        check_indices(self.next_obs, idx)
+        check_indices(self.z_LF, idx)
+        check_indices(self.z_next_LF, idx)
+        check_indices(self.z_fwd_LF, idx)
+
+        # Create the batch
         batch = dict(obs=self.obs[idx],
                         next_obs=self.next_obs[idx],
                         z_LF=self.z_LF[idx],
@@ -216,7 +220,14 @@ class GymDataLoader(BaseDataLoader):
             idx (torch.Tensor): The indices of the samples in the batch.
         """
 
+        # Sample a batch
         batch, idx = super().sample_batch(batch_size)
+
+        # Check if the indices are within bounds
+        check_indices(self.state, idx)
+        check_indices(self.next_state, idx)
+
+        # Add the state and next_state to the batch
         batch["state"] = self.state[idx]
         batch["next_state"] = self.next_state[idx]
         
@@ -336,12 +347,17 @@ class PDEDataLoader(BaseDataLoader):
                 - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
                 - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
                 - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level;
-                - state: The state at time t;
-                - next_state: The state at time t+1.
+                - t: The time steps of the data samples.
             idx (torch.Tensor): The indices of the samples in the batch.
         """
 
+        # Sample a batch
         batch, idx = super().sample_batch(batch_size)
+
+        # Check if the indices are within bounds
+        check_indices(self.t, idx)
+
+        # Add the time steps to the batch
         batch["t"] = self.t[idx]
 
         return batch, idx
@@ -361,8 +377,7 @@ class PDEDataLoader(BaseDataLoader):
                 - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
                 - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
                 - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level;
-                - state: The state at time t;
-                - next_state: The state at time t+1.
+                - t: The time steps of the data samples.
         """
 
         batch = super().sample_batch_with_idx(idx)
@@ -382,8 +397,7 @@ class PDEDataLoader(BaseDataLoader):
                 - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
                 - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
                 - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level;
-                - state: The state at time t;
-                - next_state: The state at time t+1.
+                - t: The time steps of the data samples.
         """
 
         all_samples = super().get_all_samples()
