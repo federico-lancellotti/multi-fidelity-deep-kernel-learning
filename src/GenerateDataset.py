@@ -362,23 +362,23 @@ class GenerateReactionDiffusion(GenerateDataset):
         args (dict): The dictionary of input parameters.
 
     Attributes:
-        T (dict): The time horizon for the two levels of fidelity.
-        dt (float): The time step.
-        d (dict): The diffusion coefficient for the two levels of fidelity.
-        mu (dict): The reaction coefficient for the two levels of fidelity.
-        L (float): The size of the domain.
-        n (dict): The number of grid points in one dimension for the two levels of fidelity.
-        levels (int): The number of levels of fidelity.
-        folder (str): The path to the folder where the data is saved.
-        train_data_filename (list): The filenames for the training data.
-        test_data_filename (list): The filenames for the test data.
-        Logger (list): The logger objects for the training data.
-        Logger_test (list): The logger objects for the test data.
+        - T (dict): The time horizon for the two levels of fidelity.
+        - dt (float): The time step.
+        - d (dict): The diffusion coefficient for the two levels of fidelity.
+        - mu (dict): The reaction coefficient for the two levels of fidelity.
+        - L (float): The size of the domain.
+        - n (dict): The number of grid points in one dimension for the two levels of fidelity.
+        - levels (int): The number of levels of fidelity.
+        - folder (str): The path to the folder where the data is saved.
+        - train_data_filename (list): The filenames for the training data.
+        - test_data_filename (list): The filenames for the test data.
+        - Logger (list): The logger objects for the training data.
+        - Logger_test (list): The logger objects for the test data.
 
     Methods:
-        generate_dataset: Generates the reaction-diffusion dataset for the multi-fidelity deep kernel learning model.
-        solve_reaction_diffusion: Solves the reaction-diffusion system for the given level of fidelity and parameter mu.
-        reaction_diffusion_rhs: Computes the right-hand side of the reaction-diffusion system.
+        - generate_dataset: Generates the reaction-diffusion dataset for the multi-fidelity deep kernel learning model.
+        - solve_reaction_diffusion: Solves the reaction-diffusion system for the given level of fidelity and parameter mu.
+        - reaction_diffusion_rhs: Computes the right-hand side of the reaction-diffusion system.
     """
     
     def __init__(self, args):
@@ -420,10 +420,10 @@ class GenerateReactionDiffusion(GenerateDataset):
         It solves the reaction-diffusion system for two levels of fidelity and logs the data as images.
         In particular, it stacks three consecutive frames as two observations and logs them in a pickle file.
         It saves a pickle file for each level of fidelity for the training data and the test data, each containing:
-         - obs: The observation (two consecutive frames, at time t and t+1).
-         - next_obs: The next observation (two consecutive frames, at time t+1 and t+2).
-         - t: The time index.
-         - terminated: Whether the episode is terminated.
+        - obs: The observation (two consecutive frames, at time t and t+1).
+        - next_obs: The next observation (two consecutive frames, at time t+1 and t+2).
+        - t: The time index.
+        - terminated: Whether the episode is terminated.
 
         Returns:
             None

@@ -45,21 +45,20 @@ def eval_id(X, k_list=20, n_jobs=4):
     Evaluate the intrinsic dimensionality of a dataset using the Levina-Bickel method.
 
     Parameters:
-    - X: numpy array
-        The input dataset.
-    - k_list: int or list, optional (default=20)
-        The number of nearest neighbors to consider for each intrinsic dimension estimation.
-        If an integer is provided, the same number of neighbors will be used for all estimations.
-        If a list is provided, a different number of neighbors can be specified for each estimation.
-    - n_jobs: int, optional (default=4)
-        The number of parallel jobs to run for computing the nearest neighbors.
+        - X: numpy array
+            The input dataset.
+        - k_list: int or list, optional (default=20)
+            The number of nearest neighbors to consider for each intrinsic dimension estimation.
+            If an integer is provided, the same number of neighbors will be used for all estimations.
+            If a list is provided, a different number of neighbors can be specified for each estimation.
+        - n_jobs: int, optional (default=4)
+            The number of parallel jobs to run for computing the nearest neighbors.
 
     Returns:
-    - dims: float or numpy array
-        The estimated intrinsic dimensions of the dataset.
-        If a single value of k_list is provided, a float is returned.
-        If multiple values of k_list are provided, a numpy array is returned.
-
+        - dims: float or numpy array
+            The estimated intrinsic dimensions of the dataset.
+            If a single value of k_list is provided, a float is returned.
+            If multiple values of k_list are provided, a numpy array is returned.
     """
 
     # Convert input to numpy array if it is a PyTorch tensor

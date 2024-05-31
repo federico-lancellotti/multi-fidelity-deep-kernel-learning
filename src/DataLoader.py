@@ -68,13 +68,14 @@ class BaseDataLoader:
             batch_size (int, optional): The size of the batch. Defaults to 32.
 
         Returns:
-            batch (dict): A dictionary containing the batch of data samples. In particular, the dictionary contains: 
-                - obs: The observations, at time t-1 and t;
-                - next_obs: The next observations, at time t and t+1;
-                - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
-                - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
-                - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level;
-            idx (torch.Tensor): The indices of the samples in the batch.
+            tuple:
+                - batch (dict): A dictionary containing the batch of data samples. In particular, the dictionary contains: 
+                    - obs: The observations, at time t-1 and t;
+                    - next_obs: The next observations, at time t and t+1;
+                    - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
+                    - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
+                    - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level.
+                - idx (torch.Tensor): The indices of the samples in the batch.
         """
 
         # Sample random indices
@@ -115,7 +116,7 @@ class BaseDataLoader:
                 - next_obs: The next observations, at time t and t+1;
                 - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
                 - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
-                - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level;
+                - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level.
         """
 
         return dict(obs=self.obs[idx],
@@ -135,7 +136,7 @@ class BaseDataLoader:
                 - next_obs: The next observations, at time t and t+1;
                 - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
                 - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
-                - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level;
+                - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level.
         """
 
         return dict(obs=self.obs,
@@ -209,15 +210,16 @@ class GymDataLoader(BaseDataLoader):
             batch_size (int, optional): The size of the batch. Defaults to 32.
 
         Returns:
-            batch (dict): A dictionary containing the batch of data samples. In particular, the dictionary contains: 
-                - obs: The observations, at time t-1 and t;
-                - next_obs: The next observations, at time t and t+1;
-                - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
-                - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
-                - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level;
-                - state: The state at time t;
-                - next_state: The state at time t+1.
-            idx (torch.Tensor): The indices of the samples in the batch.
+            tuple:
+                - dict: A dictionary containing the batch of data samples. The dictionary contains:
+                    - obs (torch.Tensor): The observations, at time t-1 and t.
+                    - next_obs (torch.Tensor): The next observations, at time t and t+1.
+                    - z_LF (torch.Tensor): The latent representation of the data samples (at time t-1 and t) at the low-fidelity level.
+                    - z_next_LF (torch.Tensor): The latent representation of the following data samples (at time t and t+1) at the low-fidelity level.
+                    - z_fwd_LF (torch.Tensor): The latent representation produced by the forward part of the model at the low-fidelity level.
+                    - state (torch.Tensor): The state at time t.
+                    - next_state (torch.Tensor): The state at time t+1.
+                - torch.Tensor: The indices of the samples in the batch.
         """
 
         # Sample a batch
@@ -341,14 +343,15 @@ class PDEDataLoader(BaseDataLoader):
             batch_size (int, optional): The size of the batch. Defaults to 32.
 
         Returns:
-            batch (dict): A dictionary containing the batch of data samples. In particular, the dictionary contains: 
-                - obs: The observations, at time t-1 and t;
-                - next_obs: The next observations, at time t and t+1;
-                - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
-                - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
-                - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level;
-                - t: The time steps of the data samples.
-            idx (torch.Tensor): The indices of the samples in the batch.
+            tuple:
+                - batch (dict): A dictionary containing the batch of data samples. In particular, the dictionary contains: 
+                    - obs: The observations, at time t-1 and t;
+                    - next_obs: The next observations, at time t and t+1;
+                    - z_LF: The latent representation of the data samples (at time t-1 and t) at the low-fidelity level;
+                    - z_next_LF: The latent representation of the following data samples (at time t and t+1) at the low-fidelity level;
+                    - z_fwd_LF: The latent representation produced by the forward part of the model at the low-fidelity level;
+                    - t: The time steps of the data samples.
+                - idx (torch.Tensor): The indices of the samples in the batch.
         """
 
         # Sample a batch

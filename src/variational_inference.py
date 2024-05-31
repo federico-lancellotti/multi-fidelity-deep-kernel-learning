@@ -66,7 +66,6 @@ class VariationalKL(_ApproximateMarginalLogLikelihood):
 
     Returns:
         The result of the forward pass.
-
     """
     
     def forward(self, **kwargs):

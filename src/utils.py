@@ -11,11 +11,11 @@ def save_pickle(filename, data):
     Save data as a pickle file.
 
     Parameters:
-    filename (str): The name of the file to save.
-    data: The data to be saved.
+        filename (str): The name of the file to save.
+        data: The data to be saved.
 
     Returns:
-    None
+        None
     """
 
     with open(filename, "wb") as f:
@@ -27,10 +27,10 @@ def load_pickle(file):
     Load data from a pickle file.
 
     Parameters:
-    file (str): The path to the pickle file.
+        file (str): The path to the pickle file.
 
     Returns:
-    data: The loaded data from the pickle file.
+        data: The loaded data from the pickle file.
     """
 
     if not file[-3:] == "pkl" and not file[-3:] == "kle":
@@ -77,17 +77,17 @@ def crop_frame(frame, portion=0.75, pos=1):
     Crop a frame based on the specified portion and position.
 
     Parameters:
-    - frame: numpy.ndarray
-        The input frame to be cropped.
-    - portion: float, optional
-        The portion of the frame to be retained after cropping. Default is 0.75.
-    - pos: int, optional
-        The position of the cropped portion within the frame. 
-        1: top-right, 2: top-left, 3: bottom-left, 4: bottom-right. Default is 1.
+        - frame: numpy.ndarray
+            The input frame to be cropped.
+        - portion: float, optional
+            The portion of the frame to be retained after cropping. Default is 0.75.
+        - pos: int, optional
+            The position of the cropped portion within the frame. 
+            1: top-right, 2: top-left, 3: bottom-left, 4: bottom-right. Default is 1.
 
     Returns:
-    - cropped_frame: numpy.ndarray
-        The cropped frame.
+        - cropped_frame: numpy.ndarray
+            The cropped frame.
     """
 
     size = frame.shape
@@ -111,25 +111,24 @@ def add_occlusion(frame, portion=0.25, pos=1):
     Add occlusion to a given frame.
 
     Parameters:
-    - frame: numpy.ndarray
-        The input frame to which occlusion will be added.
-    - portion: float, optional
-        The portion of the frame to be occluded. Default is 0.25.
-    - pos: int, optional
-        The position of the occlusion. Valid values are 1, 2, 3, and 4.
-        1: Top right corner
-        2: Top left corner
-        3: Bottom left corner
-        4: Bottom right corner
-        Default is 1.
+        - frame: numpy.ndarray
+            The input frame to which occlusion will be added.
+        - portion: float, optional
+            The portion of the frame to be occluded. Default is 0.25.
+        - pos: int, optional
+            The position of the occlusion. Valid values are 1, 2, 3, and 4.
+            1: Top right corner
+            2: Top left corner
+            3: Bottom left corner
+            4: Bottom right corner
+            Default is 1.
 
     Returns:
-    - frame_with_occlusion: numpy.ndarray
-        The frame with occlusion added.
+        - frame_with_occlusion: numpy.ndarray
+            The frame with occlusion added.
 
     Note:
-    - The occluded portion of the frame will be set to 0, namely black.
-
+        - The occluded portion of the frame will be set to 0, namely black.
     """
 
     size = frame.shape
@@ -155,11 +154,11 @@ def sample_batch(data, batch_size=32):
     Randomly samples a batch of data from the given dataset.
 
     Parameters:
-    - data: The dataset from which to sample the batch.
-    - batch_size: The size of the batch to be sampled. Default is 32.
+        - data: The dataset from which to sample the batch.
+        - batch_size: The size of the batch to be sampled. Default is 32.
 
     Returns:
-    - batch: The sampled batch of data as a numpy array.
+        - batch: The sampled batch of data as a numpy array.
     """
 
     idxs = np.random.randint(0, len(data), batch_size)
@@ -172,12 +171,13 @@ def plot_frame(frame, show=False, filename="", pause=0):
     Plot a frame (image) and optionally save it to a file and/or display it.
 
     Parameters:
-    - frame: The frame (image) to be plotted.
-    - show (optional): If True, display the plotted frame on the screen. Default is False.
-    - filename (optional): If provided, save the plotted frame to a file with the given filename. Default is an empty string.
-
+        - frame: The frame (image) to be plotted.
+        - show (optional): If True, display the plotted frame on the screen. Default is False.
+        - filename (optional): If provided, save the plotted frame to a file with the given filename. Default is an empty string.
+        - pause (optional): The time to pause before closing the plot. Default is 0.
+        
     Returns:
-    None
+        None
     """
 
     plt.imshow(frame)

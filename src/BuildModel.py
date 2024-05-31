@@ -9,7 +9,7 @@ from models import SVDKL_AE_latent_dyn
 from variational_inference import VariationalKL
 from utils import load_pickle
 from trainer import train
-from src.DataLoader import BaseDataLoader, GymDataLoader, PDEDataLoader
+from DataLoader import BaseDataLoader, GymDataLoader, PDEDataLoader
 
 import warnings
 warnings.filterwarnings("ignore", message="torch.sparse.SparseTensor")
