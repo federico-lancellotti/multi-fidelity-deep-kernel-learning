@@ -6,8 +6,8 @@ from abc import ABC, abstractmethod
 from scipy.fft import fft2, ifft2
 from scipy.integrate import solve_ivp
 
-from logger import Logger
-from utils import stack_frames, len_of_episode, heatmap_to_image
+from .logger import Logger
+from .utils import stack_frames, len_of_episode, heatmap_to_image
 
 # Gymnasium is using np.bool8, which is deprecated.
 from warnings import filterwarnings
@@ -33,6 +33,7 @@ class GenerateDataset(ABC):
     Attributes:
         env_name (str): The name of the Gym environment.
         levels (int): The number of levels of fidelity for the dataset.
+        directory (str): The path to the directory of the project.
 
     Methods:
         generate_dataset: Abstract method to generate the dataset.
@@ -48,6 +49,7 @@ class GenerateDataset(ABC):
         
         self.env_name = args["env_name"]
         self.levels = len(args["training_dataset"])
+        self.directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
 
     @abstractmethod
@@ -157,8 +159,7 @@ class GenerateGym(GenerateDataset):
         self.set_environment()
 
         # Set logger
-        directory = os.path.dirname(os.path.abspath(__file__))
-        self.folder = os.path.join(directory + "/Data/")
+        self.folder = os.path.join(self.directory + "/Data/")
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         self.png_folder = os.path.join(self.folder + "png/")
@@ -402,8 +403,7 @@ class GenerateReactionDiffusion(GenerateDataset):
             self.mu[level] = [self.mu[level]] if not isinstance(self.mu[level], list) else self.mu[level]
 
         # Set the folder to save the data
-        directory = os.path.dirname(os.path.abspath(__file__))
-        self.folder = os.path.join(directory + "/Data/reaction-diffusion/")
+        self.folder = os.path.join(self.directory + "/Data/reaction-diffusion/")
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
 
@@ -488,7 +488,7 @@ class GenerateReactionDiffusion(GenerateDataset):
                                 Logger=self.Logger_test[level], 
                                 terminated=terminated)
                 
-            self.Logger[level].save_obslog(filename=self.test_data_filename[level])
+            self.Logger_test[level].save_obslog(filename=self.test_data_filename[level])
 
         print("End.")
 

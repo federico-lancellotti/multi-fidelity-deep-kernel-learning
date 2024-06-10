@@ -5,11 +5,11 @@ import gpytorch
 import gc
 from datetime import datetime
 
-from models import SVDKL_AE_latent_dyn
-from variational_inference import VariationalKL
-from utils import load_pickle
-from trainer import train
-from DataLoader import BaseDataLoader, GymDataLoader, PDEDataLoader
+from .models import SVDKL_AE_latent_dyn
+from .variational_inference import VariationalKL
+from .utils import load_pickle
+from .trainer import train
+from .DataLoader import BaseDataLoader, GymDataLoader, PDEDataLoader
 
 import warnings
 warnings.filterwarnings("ignore", message="torch.sparse.SparseTensor")
@@ -117,7 +117,7 @@ class BuildModel:
 
         # Load data
         levels = len(self.training_dataset)
-        self.directory = os.path.dirname(os.path.abspath(__file__))
+        self.directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         self.folder = []
         self.data = []
@@ -356,13 +356,12 @@ class BuildModel:
         """
 
         # Load data
-        directory = os.path.dirname(os.path.abspath(__file__))
         data = self.data[level]
         N = self.N[level]
 
         # Load weights
         weights_folder = os.path.join(
-            directory + "/Results/" + self.env_name + "/" + self.results_folder + "/", self.weights_filename[level] + ".pth"
+            self.directory + "/Results/" + self.env_name + "/" + self.results_folder + "/", self.weights_filename[level] + ".pth"
         )
         
         model.load_state_dict(torch.load(weights_folder, map_location=self.device)["model"])

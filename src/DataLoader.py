@@ -1,5 +1,5 @@
 import torch
-from utils import check_indices
+from .utils import check_indices
 
 
 class BaseDataLoader:
@@ -54,8 +54,8 @@ class BaseDataLoader:
 
         pos = 0
         for d in data:
-            self.obs[pos] = torch.tensor(d["obs"], dtype=torch.float32) / 255
-            self.next_obs[pos] = torch.tensor(d["next_obs"], dtype=torch.float32) / 255
+            self.obs[pos] = torch.tensor(d["obs"], dtype=torch.float32) / 255.0
+            self.next_obs[pos] = torch.tensor(d["next_obs"], dtype=torch.float32) / 255.0
             self.done[pos] = d["terminated"]
             pos += 1
 
