@@ -34,6 +34,9 @@ def Levina_Bickel(dists, k):
     dim (float): The estimated intrinsic dimensionality of the dataset.
     """
     
+    epsilon = 1e-10 # small value to avoid division by zero
+    dists = np.where(dists == 0, epsilon, dists)
+
     m = np.log(dists[:, k:k+1] / dists[:, 1:k])
     m = (k - 2) / np.sum(m, axis=1)
     dim = np.mean(m)
