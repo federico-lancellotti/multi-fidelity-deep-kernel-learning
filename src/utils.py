@@ -4,6 +4,7 @@ import pickle
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import imageio
 
 
 def save_pickle(filename, data):
@@ -325,3 +326,14 @@ def get_length(x):
 
 def check_indices(tensor, indices):
     assert torch.all(indices >= 0) and torch.all(indices < tensor.size(0)), "Index out of bounds"
+
+
+def generate_gif(filepath, start, end, filename="movie.gif"):
+    filenames = [filepath + str(i) + ".png" for i in range(start, end)]
+    images = []
+    
+    for f in filenames:
+        images.append(imageio.imread(f))
+
+    result_filename = filepath + filename
+    imageio.mimsave(result_filename, images)
