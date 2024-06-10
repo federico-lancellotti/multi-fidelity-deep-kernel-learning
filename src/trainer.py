@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from losses import loss_bce, kl_divergence_balance
+from .losses import loss_bce, kl_divergence_balance
 
 
 def train(
@@ -51,7 +51,7 @@ def train(
     train_loss = 0
     train_loss_vae = 0
     train_loss_varKL_vae = 0
-    # train_loss_fwd_rec = 0
+    train_loss_fwd_rec = 0
     train_loss_fwd_res = 0
     train_loss_varKL_fwd = 0
 
@@ -80,7 +80,7 @@ def train(
         loss_varKL_vae = variational_kl_term(beta=1)
 
         # compute forward model loss (KL divergence) + variational inference
-        # loss_fwd_rec = loss_bce(mu_x_fwd, next_obs)
+        loss_fwd_rec = loss_bce(mu_x_fwd, next_obs)
         loss_fwd_res = -beta * kl_divergence_balance(
             model.AE_DKL.likelihood(res_target).mean,
             model.AE_DKL.likelihood(res_target).variance,
@@ -91,8 +91,8 @@ def train(
         )
         loss_varKL_fwd = variational_kl_term_fwd(beta=1)
 
-        # loss = loss_vae + loss_fwd_rec - loss_fwd_res
-        loss = loss_vae - loss_fwd_res
+        loss = loss_vae + loss_fwd_rec - loss_fwd_res
+        # loss = loss_vae - loss_fwd_res
 
         loss_varKL_v = -loss_varKL_vae
         loss_varKL_f = -loss_varKL_fwd
@@ -105,7 +105,7 @@ def train(
         train_loss += loss.item()
         train_loss_vae += loss_vae.item()
         train_loss_varKL_vae += loss_varKL_v.item()
-        # train_loss_fwd_rec += loss_fwd_rec.item()
+        train_loss_fwd_rec += loss_fwd_rec.item()
         train_loss_fwd_res += -loss_fwd_res.item()
         train_loss_varKL_fwd += loss_varKL_f.item()
 
@@ -117,6 +117,6 @@ def train(
     print('====> Epoch: {} Average loss: {:.4f}'.format(num_epochs, train_loss / sample_size), flush=flush)
     print('====> Epoch: {} Average VAE loss: {:.4f}'.format(num_epochs, train_loss_vae / sample_size), flush=flush)
     print('====> Epoch: {} Average variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_vae / sample_size), flush=flush)
-    # print('====> Epoch: {} Average FWD reconstruction loss: {:.4f}'.format(num_epochs, train_loss_fwd_rec / sample_size), flush=flush)
+    print('====> Epoch: {} Average FWD reconstruction loss: {:.4f}'.format(num_epochs, train_loss_fwd_rec / sample_size), flush=flush)
     print('====> Epoch: {} Average FWD residuals loss: {:.4f}'.format(num_epochs, train_loss_fwd_res / sample_size), flush=flush)
     print('====> Epoch: {} Average FWD variational loss: {:.4f}'.format(num_epochs, train_loss_varKL_fwd / sample_size), flush=flush)
