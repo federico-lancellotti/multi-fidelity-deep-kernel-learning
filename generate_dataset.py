@@ -1,6 +1,5 @@
 import yaml
-from GenerateDataset import GenerateGym, GenerateReactionDiffusion
-
+from src.GenerateDataset import GenerateGym, GeneratePDE
 
 if __name__ == "__main__":
     with open("config.yaml", "r") as file:
@@ -21,8 +20,8 @@ if __name__ == "__main__":
         NewTestSet.generate_dataset()
 
     # Generate PDE dataset (reaction-diffusion)
-    elif env_name in ("reaction-diffusion"):
-        NewDataset = GenerateReactionDiffusion(args)
+    elif env_name in ("reaction-diffusion", "diffusion-advection"):
+        NewDataset = GeneratePDE(args)
         NewDataset.generate_dataset()
 
     # No other test case supported (yet)
