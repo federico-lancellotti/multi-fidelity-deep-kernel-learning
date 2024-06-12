@@ -366,9 +366,8 @@ class GeneratePDE(GenerateDataset):
         - T (dict): The time horizon for the two levels of fidelity.
         - dt (float): The time step.
         - d (dict): The diffusion coefficient for the two levels of fidelity.
-        - mu (dict): The reaction coefficient for the two levels of fidelity.
-        - mu_test (float): The reaction coefficient for the test data.
-        - mu_all (set): The set of all reaction coefficients.
+        - mu (dict): The mu coefficient for the two levels of fidelity.
+        - mu_test (float): The mu coefficient for the test data.
         - L (float): The size of the domain.
         - n (dict): The number of grid points in one dimension for the two levels of fidelity.
         - levels (int): The number of levels of fidelity.
@@ -397,9 +396,6 @@ class GeneratePDE(GenerateDataset):
         self.mu_test = args["mu_test"]
         self.L = args["L"]
         self.n = args["n"]
-
-        # Get all mu values
-        self.mu_all = set().union(*(val for val in self.mu.values()), self.mu_test)
 
         # Convert mu to list, if it is not already (we need to iterate over it later...)
         for level in range(self.levels):
@@ -448,7 +444,7 @@ class GeneratePDE(GenerateDataset):
             print(f"Level {level}...")
             u_l = dict()
             T_l = self.T[level] if (level < self.levels - 1) else (self.T[level] + self.T_test)
-            for mu in self.mu_all:
+            for mu in set().union(self.mu[level], self.mu_test):
                 print(f"Solving for mu = {mu}")
                 equation = self.solver(d=self.d[level], mu=mu, T=T_l, dt=self.dt, L=self.L, n=self.n[level])
                 u_l[mu] = equation.solve()

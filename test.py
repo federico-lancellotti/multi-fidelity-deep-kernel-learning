@@ -3,8 +3,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import plot_latent_dims, len_of_episode
-from BuildModel import BuildModel
+from src.utils import plot_latent_dims, len_of_episode
+from src.BuildModel import BuildModel
 
 
 def test():

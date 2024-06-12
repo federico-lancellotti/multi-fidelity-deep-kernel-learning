@@ -2,9 +2,9 @@ import torch
 import numpy as np
 import yaml
 
-from intrinsic_dimension import estimate_ID
-from BuildModel import BuildModel
-from utils import align_pde, get_length
+from src.intrinsic_dimension import estimate_ID
+from src.BuildModel import BuildModel
+from src.utils import align_pde, get_length
 
 
 # for 84x84 inputs
