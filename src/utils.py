@@ -260,22 +260,20 @@ def len_of_episode(env_name):
         assert False, "Invalid environment name. Test case not supported."
         
 
-def heatmap_to_image(u, u_min=-1, u_max=1):
+def heatmap_to_image(u):
     """
     Convert a matrix to its heatmap as image.
 
     Args:
         u (numpy.ndarray): The matrix to be converted to a heatmap.
-        u_min (float, optional): The minimum value of the matrix. Defaults to -1.
-        u_max (float, optional): The maximum value of the matrix. Defaults to 1.
 
     Returns:
         Image: The heatmap image.
     """
 
-    u = (u - u_min) / (u_max - u_min)
+    u = (u - u.min()) / (u.max() - u.min())
     u = cm.viridis(u)[:,:,:3]
-    u = np.uint8(u*255)
+    u = (u * 255).astype(np.uint8)
 
     return u
 
@@ -329,6 +327,19 @@ def check_indices(tensor, indices):
 
 
 def generate_gif(filepath, start, end, filename="movie.gif"):
+    """
+    Generate a gif from a sequence of images.
+
+    Args:
+        filepath (str): The path to the images.
+        start (int): The starting index of the images.
+        end (int): The ending index of the images.
+        filename (str, optional): The name of the gif file. Defaults to "movie.gif".
+
+    Returns:
+        None
+    """
+
     filenames = [filepath + str(i) + ".png" for i in range(start, end)]
     images = []
     
@@ -337,3 +348,27 @@ def generate_gif(filepath, start, end, filename="movie.gif"):
 
     result_filename = filepath + filename
     imageio.mimsave(result_filename, images)
+
+
+def plot_error(error, labels, filepath):
+    """
+    Plot the error.
+
+    Args:
+        error (list): The list of errors.
+        labels (list): The list of labels.
+        filepath (str): The path to save the plot.
+
+    Returns:
+        None
+    """
+
+    for i in range(len(error)):
+        plt.plot(error[i], label=labels[i])
+
+    plt.legend()
+    plt.title("Reconstruction error")
+    plt.xlabel("Time")
+    plt.ylabel("Error")
+    plt.savefig(filepath + "error.png", format="png")
+    plt.close()
