@@ -46,24 +46,3 @@ def kl_divergence_balance(mu_1, var_1, mu_2, var_2, alpha=0.8, dim=1):
     div = torch.max(div, div.new_full(div.size(), 3))
     
     return torch.mean(div)
-
-
-def loss_negloglikelihood(mu, target, var, dim):
-    """
-    Calculates the negative log-likelihood loss between the predicted mean `mu` and the target `target`.
-
-    Args:
-        mu (torch.Tensor): The predicted mean values.
-        target (torch.Tensor): The target values.
-        var (torch.Tensor): The variance values.
-        dim (int): The dimension along which the independent distributions are defined.
-
-    Returns:
-        torch.Tensor: The negative log-likelihood loss.
-    """
-    
-    normal_dist = torch.distributions.Independent(
-        torch.distributions.Normal(mu, var), dim
-    )
-    
-    return -torch.mean(normal_dist.log_prob(target))
