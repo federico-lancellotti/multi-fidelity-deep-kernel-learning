@@ -3,8 +3,6 @@ import os
 import gymnasium as gym
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
-from scipy.fft import fft2, ifft2
-from scipy.integrate import solve_ivp
 
 from .logger import Logger
 from .utils import stack_frames, len_of_episode, heatmap_to_image
@@ -24,7 +22,7 @@ class GenerateDataset(ABC):
     """
     Abstract class for generating datasets for the multi-fidelity deep kernel learning model.
     It generates a dataset at multiple levels of fidelity.
-    The class is inherited by the GenerateGym and GenerateReactionDiffusion classes, 
+    The class is inherited by the GenerateGym and GeneratePDE classes, 
     which implement the abstract method generate_dataset for the Gymnasium environments 
     and the reaction-diffusion system, respectively.
 
@@ -35,6 +33,7 @@ class GenerateDataset(ABC):
         env_name (str): The name of the Gym environment.
         levels (int): The number of levels of fidelity for the dataset.
         directory (str): The path to the directory of the project.
+        folder (str): The path to the folder where the dataset is saved.
 
     Methods:
         generate_dataset: Abstract method to generate the dataset.
@@ -51,6 +50,11 @@ class GenerateDataset(ABC):
         self.env_name = args["env_name"]
         self.levels = len(args["training_dataset"])
         self.directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # Set the folder to save the data
+        self.folder = os.path.join(self.directory + "/Data/" + self.env_name + "/")
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
     
 
     @abstractmethod
@@ -84,8 +88,8 @@ class GenerateGym(GenerateDataset):
     - obs: the frames at time t-1 and t, stacked;
     - next_obs: the frames at time t and t+1, stacked;
     - terminated: whether the episode is terminated;
-    - state: the current state of the environment;
-    - next_state: the next state of the environment.
+    - state: the state of the system at time t;
+    - next_state: the state of the system at time t+1.
     
     The class can also save the frames as PNG images in the png folder.
 
@@ -108,17 +112,17 @@ class GenerateGym(GenerateDataset):
         num_episodes (list): The list of the number of episodes to generate at each level.
         max_steps (int): The maximum number of steps in an episode.
         env (gym.Env): The Gym environment.
-        folder (str): The path to the Data folder.
+        folder (str): The path to the folder where the dataset is saved.
         png_folder (str): The path to the png folder.
         logger (list): The list of loggers for each level of fidelity.
 
     Methods:
-        set_environment: Sets up the Gym environment based on the specified environment name.
+        _set_environment: Sets up the Gym environment based on the specified environment name.
         generate_dataset: Generates a dataset by running episodes in the environment and logging observations.
-        new_obs: Generates a new observation by stacking frames at different levels of fidelity.
-        log_obs: Logs the observation as a tuple with the current frame, the next one, the terminated status, the current state, and the next state.
-        save_log: Saves the dataset as a pickle file for each level of fidelity.
-        save_image: Saves the given frame as an image.
+        _new_obs: Generates a new observation by stacking frames at different levels of fidelity.
+        _log_obs: Logs the observation as a tuple with the current frame, the next one, the terminated status, the current state, and the next state.
+        _save_log: Saves the dataset as a pickle file for each level of fidelity.
+        _save_image: Saves the given frame as an image.
     """
 
     def __init__(self, args, seed=1, test=False, png=False):
@@ -156,17 +160,17 @@ class GenerateGym(GenerateDataset):
         self.max_steps = len_of_episode(self.env_name)
 
         # Call the set_environment method
-        self.set_environment()
+        self._set_environment()
 
         # Set logger
-        self.folder = os.path.join(self.directory + "/Data/")
-        if not os.path.exists(self.folder):
-            os.makedirs(self.folder)
-        self.png_folder = os.path.join(self.folder + "png/")
+        if self.png:
+            self.png_folder = os.path.join(self.folder + "png/")
+            if not os.path.exists(self.png_folder):
+                os.makedirs(self.png_folder)
         self.logger = [Logger(self.folder) for i in range(self.levels)]
 
 
-    def set_environment(self):
+    def _set_environment(self):
         """
         Sets up the Gym environment based on the specified environment name.
 
@@ -225,25 +229,25 @@ class GenerateGym(GenerateDataset):
             print("Episode: ", episode)
             for step_index in range(self.max_steps):
                 # Generate the observations
-                obs = self.new_obs(frame0, frame1)
+                obs = self._new_obs(frame0, frame1)
 
                 # Render new frame: 
                 # run one timestep of the environment’s dynamics using the agent actions
                 next_state, _, terminated, _, _ = self.env.step(action)
                 frame2 = np.array(self.env.render())
-                next_obs = self.new_obs(frame1, frame2)
+                next_obs = self._new_obs(frame1, frame2)
 
                 # Set the terminated flag if the episode is over
                 if step_index == self.max_steps - 1:
                     terminated = True
 
                 # Log the observations
-                self.log_obs(episode, obs, next_obs, terminated, state, next_state)
+                self._log_obs(episode, obs, next_obs, terminated, state, next_state)
 
                 # Print png
                 if self.png:
                     frame_name = self.png_folder + str(episode) + "_" + str(step_index)
-                    self.save_image(frame1, frame_name, show=False)
+                    self._save_image(frame1, frame_name, show=False)
 
                 # Prepare the next iteration
                 frame0 = frame1
@@ -251,14 +255,14 @@ class GenerateGym(GenerateDataset):
                 state = next_state
 
         # Save the dataset
-        self.save_log()
+        self._save_log()
 
         # Close the Gym environment
         self.env.close()
         print("Done.")
 
 
-    def new_obs(self, frame1, frame2):
+    def _new_obs(self, frame1, frame2):
         """
         Generate a new observation by stacking frames at different levels of fidelity.
 
@@ -286,7 +290,7 @@ class GenerateGym(GenerateDataset):
         return obs
 
 
-    def log_obs(self, episode, obs, next_obs, terminated, state, next_state):
+    def _log_obs(self, episode, obs, next_obs, terminated, state, next_state):
         """
         Logs the observation as a tuple with: 
         - the current frame;
@@ -314,7 +318,7 @@ class GenerateGym(GenerateDataset):
                 self.logger[l].obslog(dict(obs=obs[l], next_obs=next_obs[l], terminated=terminated, state=state, next_state=next_state))
 
 
-    def save_log(self):
+    def _save_log(self):
         """
         Save the dataset as a pickle file for each level of fidelity.
         This method saves the dataset by iterating over the levels and calling the `save_obslog` method of each logger.
@@ -330,7 +334,7 @@ class GenerateGym(GenerateDataset):
             self.logger[l].save_obslog(filename=self.data_filename[l])
 
 
-    def save_image(self, frame, filename, show=False):
+    def _save_image(self, frame, filename, show=False):
         """
         Save the given frame as an image.
 
@@ -380,8 +384,8 @@ class GeneratePDE(GenerateDataset):
 
     Methods:
         - generate_dataset: Generates the PDE dataset for the multi-fidelity deep kernel learning model.    
-        - log_level: Logs the data for the given level of fidelity.
-        - log_obs: Logs the observation and the next observation for the given time index t.
+        - _log_level: Logs the data for the given level of fidelity.
+        - _log_obs: Logs the observation and the next observation for the given time index t.
     """
     
     def __init__(self, args):
@@ -401,11 +405,6 @@ class GeneratePDE(GenerateDataset):
         for level in range(self.levels):
             self.mu[level] = [self.mu[level]] if not isinstance(self.mu[level], list) else self.mu[level]
         self.mu_test = [self.mu_test] if not isinstance(self.mu_test, list) else self.mu_test
-
-        # Set the folder to save the data
-        self.folder = os.path.join(self.directory + "/Data/" + self.env_name + "/")
-        if not os.path.exists(self.folder):
-            os.makedirs(self.folder)
 
         # Set the filenames and the logger objects
         self.train_data_filename = [f"data_train_{i}.pkl" for i in range(self.levels)]
@@ -455,16 +454,16 @@ class GeneratePDE(GenerateDataset):
         # Log the train data
         print("Logging the training data...")
         for level in range(self.levels):
-            self.log_level(level=level, u=u[level], test=False)
+            self._log_level(level=level, u=u[level], test=False)
 
         # Log the test data
         print("Logging the test data...")
         for level in range(self.levels):
-            self.log_level(level=level, u=u[level], test=True)
+            self._log_level(level=level, u=u[level], test=True)
         print("End.")
 
 
-    def log_level(self, level, u, test=False):
+    def _log_level(self, level, u, test=False):
         """
         Logs the data for the given level of fidelity.
         It logs the data for the training data if test=False, and for the test data if test=True.
@@ -496,7 +495,7 @@ class GeneratePDE(GenerateDataset):
             u_mu = u[mu]
             for t in range(start, start + time_range - 2):
                 terminated = True if t == time_range - 3 else False
-                self.log_obs(u=u_mu, 
+                self._log_obs(u=u_mu, 
                              t=t, 
                              size=self.n[level], 
                              Logger=Logger, 
@@ -505,7 +504,7 @@ class GeneratePDE(GenerateDataset):
         Logger.save_obslog(filename=filename)
 
 
-    def log_obs(self, u, t, size, Logger, terminated):
+    def _log_obs(self, u, t, size, Logger, terminated):
         """
         Logs the observation and the next observation for the given time index t.
         In particular, it logs:
