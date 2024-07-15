@@ -62,6 +62,7 @@ class BuildModel:
         add_level(level, latent_dim, latent_dim_LF=0): Adds a level of fidelity to the model.
         train_level(level, model, z_LF=None, z_next_LF=None, z_fwd_LF=None): Trains a level of fidelity in the model.
         test_level(level, model, z_LF=None, z_next_LF=None, z_fwd_LF=None): Tests a level of fidelity in the model.
+        get_latent_representations(model, data_loader, idx=range(100), step=600): Gets the latent representations of the samples.
         eval_level(model, data_loader): Evaluates a level of fidelity in the model.
     """
 
@@ -107,28 +108,24 @@ class BuildModel:
         self.obs_dim_3 = args["obs_dim_3"]
         self.h_dim = args["h_dim"]
         self.env_name = args["env_name"]
-        self.training_dataset = args["training_dataset"]
         self.log_interval = args["log_interval"]
         self.jitter = float(args["jitter"])
-
-        self.testing_dataset = args["testing_dataset"]
-        self.results_folder = args["results_folder"]
-        self.weights_filename = args["weights_filename"]
+        
+        if not self.test:
+            self.dataset = args["training_dataset"]
+        else:
+            self.dataset = args["testing_dataset"]
 
         # Load data
-        levels = len(self.training_dataset)
+        levels = len(self.dataset)
         self.directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         self.folder = []
         self.data = []
         self.N = []
 
-        if self.test: 
-            for l in range(levels):
-                self.folder.append(os.path.join(self.directory + "/Data", self.testing_dataset[l]))
-        else:
-            for l in range(levels):
-                self.folder.append(os.path.join(self.directory + "/Data", self.training_dataset[l]))
+        for l in range(levels):
+            self.folder.append(os.path.join(self.directory + "/Data", self.dataset[l]))
         
         for l in range(levels):
             self.data.append(load_pickle(self.folder[l]))
@@ -143,6 +140,9 @@ class BuildModel:
             self.save_pth_dir = self.directory + "/Results/" + self.env_name + "/" + self.folder_date + "/"
             if not os.path.exists(self.save_pth_dir):
                 os.makedirs(self.save_pth_dir)
+        else:
+            self.results_folder = args["results_folder"]
+            self.weights_filename = args["weights_filename"]
 
         # Select the correct data loader with respect to the environment
         case_to_loader = {
@@ -165,7 +165,7 @@ class BuildModel:
             latent_dim_LF (int, optional): The dimension of the low-fidelity latent space. Defaults to 0.
 
         Returns:
-            model: The initialized model with the added level.
+            model: The initialized model for the desired level.
         """
 
         # Set likelihood
@@ -273,7 +273,6 @@ class BuildModel:
         date_string = now.strftime("%Y-%m-%d_%Hh-%Mm-%Ss")
 
         # Define the data loader for training
-        
         train_loader = self.data_loader(
             self.data[level],
             z_LF,

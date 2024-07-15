@@ -150,23 +150,6 @@ def add_occlusion(frame, portion=0.25, pos=1):
     return frame_with_occlusion
 
 
-def sample_batch(data, batch_size=32):
-    """
-    Randomly samples a batch of data from the given dataset.
-
-    Parameters:
-        - data: The dataset from which to sample the batch.
-        - batch_size: The size of the batch to be sampled. Default is 32.
-
-    Returns:
-        - batch: The sampled batch of data as a numpy array.
-    """
-
-    idxs = np.random.randint(0, len(data), batch_size)
-    batch = [data[i] for i in idxs]
-    return np.array(batch)
-
-
 def plot_frame(frame, show=False, filename="", pause=0):
     """
     Plot a frame (image) and optionally save it to a file and/or display it.
@@ -197,14 +180,15 @@ def plot_frame(frame, show=False, filename="", pause=0):
             plt.show()
 
 
-def plot_latent_dims(z, dims=3, T=200, episodes=3, show=False, filename=""):
+def plot_latent_dims(z, T, dt, dims=3, episodes=3, show=False, filename=""):
     """
     Plot the latent dimensions of the given data, as functions of time.
 
     Args:
         z (numpy.ndarray): The input data with shape (N, D), where N is the number of samples and D is the number of dimensions.
+        T (int): The length of each episode.
+        dt (float): The time step.
         dims (int, optional): The number of latent dimensions to plot. Defaults to 3.
-        T (int, optional): The length of each episode. Defaults to 200.
         episodes (int, optional): The number of episodes to plot. Defaults to 3.
         show (bool, optional): Whether to display the plot. Defaults to False.
         filename (str, optional): The filename to save the plot. Defaults to "".
@@ -219,10 +203,11 @@ def plot_latent_dims(z, dims=3, T=200, episodes=3, show=False, filename=""):
 
         # Loop over each episode
         episodes = min(episodes, int(len(theta_i)/T))
+        time = np.arange(T)*dt
         for j in range(episodes):
-            pos = j*200
+            pos = j*T
             l = T
-            plt.plot(range(l), theta_i[pos:pos+l], linewidth=1.5, alpha=0.7)
+            plt.plot(time, theta_i[pos:pos+l], linewidth=1.5, alpha=0.7)
 
         plt.xlabel('t')
         plt.ylabel('theta_' + str(i+1))
@@ -231,7 +216,7 @@ def plot_latent_dims(z, dims=3, T=200, episodes=3, show=False, filename=""):
 
         # Save the image locally
         if filename:
-            plt.savefig(filename + "x_" + str(i+1) + ".png")
+            plt.savefig(filename + "x_" + str(i+1) + ".svg")
 
         # Print to screen
         if show:
@@ -326,7 +311,7 @@ def check_indices(tensor, indices):
     assert torch.all(indices >= 0) and torch.all(indices < tensor.size(0)), "Index out of bounds"
 
 
-def generate_gif(filepath, start, end, filename="movie.gif"):
+def generate_gif(filepath, start, end, step=1, filename="movie.gif"):
     """
     Generate a gif from a sequence of images.
 
@@ -340,7 +325,7 @@ def generate_gif(filepath, start, end, filename="movie.gif"):
         None
     """
 
-    filenames = [filepath + str(i) + ".png" for i in range(start, end)]
+    filenames = [filepath + str(i) + ".png" for i in range(start, end, step)]
     images = []
     
     for f in filenames:
@@ -350,12 +335,14 @@ def generate_gif(filepath, start, end, filename="movie.gif"):
     imageio.mimsave(result_filename, images)
 
 
-def plot_error(error, labels, filepath):
+def plot_error(error, T_start, dt, labels, filepath):
     """
     Plot the error.
 
     Args:
         error (list): The list of errors.
+        T_start (int): The starting time.
+        dt (float): The time step.
         labels (list): The list of labels.
         filepath (str): The path to save the plot.
 
@@ -363,12 +350,14 @@ def plot_error(error, labels, filepath):
         None
     """
 
+    time = np.arange(T_start, T_start + len(error[0])) * dt
+
     for i in range(len(error)):
-        plt.plot(error[i], label=labels[i])
+        plt.plot(time, error[i], label=labels[i])
 
     plt.legend()
     plt.title("Reconstruction error")
     plt.xlabel("Time")
     plt.ylabel("Error")
-    plt.savefig(filepath + "error.png", format="png")
+    plt.savefig(filepath + "error.svg", format="svg")
     plt.close()

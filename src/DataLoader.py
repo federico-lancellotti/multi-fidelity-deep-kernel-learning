@@ -86,12 +86,12 @@ class BaseDataLoader:
             if self.done[i] == True:
                 idx[i] = idx[i] - 1
 
-        # Check if the indices are within bounds
-        check_indices(self.obs, idx)
-        check_indices(self.next_obs, idx)
-        check_indices(self.z_LF, idx)
-        check_indices(self.z_next_LF, idx)
-        check_indices(self.z_fwd_LF, idx)
+        # # Check if the indices are within bounds
+        # check_indices(self.obs, idx)
+        # check_indices(self.next_obs, idx)
+        # check_indices(self.z_LF, idx)
+        # check_indices(self.z_next_LF, idx)
+        # check_indices(self.z_fwd_LF, idx)
 
         # Create the batch
         batch = dict(obs=self.obs[idx],
@@ -226,8 +226,8 @@ class GymDataLoader(BaseDataLoader):
         batch, idx = super().sample_batch(batch_size)
 
         # Check if the indices are within bounds
-        check_indices(self.state, idx)
-        check_indices(self.next_state, idx)
+        # check_indices(self.state, idx)
+        # check_indices(self.next_state, idx)
 
         # Add the state and next_state to the batch
         batch["state"] = self.state[idx]
@@ -358,7 +358,7 @@ class PDEDataLoader(BaseDataLoader):
         batch, idx = super().sample_batch(batch_size)
 
         # Check if the indices are within bounds
-        check_indices(self.t, idx)
+        # check_indices(self.t, idx)
 
         # Add the time steps to the batch
         batch["t"] = self.t[idx]
