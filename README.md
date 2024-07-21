@@ -3,6 +3,8 @@ This project proposes a Stochastic Variational Deep Kernel Learning method for t
 The framework is composed of multiple instances of a DKL model, each of them associated with a particular level of fidelity. Each instance includes an autoencoder, that compresses the high dimensional data (a video of the dynamical system) into a low-dimensional latent state space, and a latent dynamical model, that predicts the system evolution over time. 
 The latent representation of the system and its dynamics is used to estimate the intrinsic dimensionality of the system and as a correction term for the higher levels of fidelity.
 
+![Model scheme](/Reports/model.png)
+
 ## Getting Started
 These instructions will help you run the code on you local machine. Please be aware that the usage of a GPU is strongly advised, especially for the training stage. Currently, only CUDA is supported for GPU-based training.
 A config.yaml file is available to set the main parameters.
