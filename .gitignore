@@ -163,7 +163,7 @@ cython_debug/
 #.idea/
 
 # Images
-*.png
+# *.png
 
 # Datasets
 Data/
@@ -175,5 +175,18 @@ Results/
 # Visual Studio Code
 .vscode/
 
-# Old files
+# Docs
+docs/
+
+# Test files
 prova.py
+prova1.py
+prova2.py
+load_pde_data.py
+config-single.yaml
+config-double.yaml
+config-old.yaml
+main-four-fid.py
+main-single-fid.py
+test-double.py
+test-single.py

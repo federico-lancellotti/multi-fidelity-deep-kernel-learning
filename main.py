@@ -44,7 +44,9 @@ def main():
     dt = args['dt']
     mu = args['mu']
 
-    idx = align_pde(len_0=int(T[0]/dt), len_1=int(T[1]/dt), n_cases_0=get_length(mu[0]), n_cases_1=get_length(mu[1]))
+    len_0 = int(T[0]/dt) - 2
+    len_1 = int(T[1]/dt) - 2
+    idx = align_pde(len_0=len_0, len_1=len_1, mu0=mu[0], mu1=mu[1])
 
 
     # LEVEL OF FIDELITY: 0

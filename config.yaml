@@ -2,7 +2,7 @@
 seed: 1
 
 # Dataset generator
-env_name: "diffusion-advection"  # Available: Pendulum, Acrobot, MountainCarContinuous, reaction-diffusion, diffusion-advection
+env_name: "reaction-diffusion"  # Available: Pendulum, Acrobot, MountainCarContinuous, reaction-diffusion, diffusion-advection
 
 ## Gym environment parameters
 num_episodes: {0: 100, 1: 30}
@@ -11,23 +11,23 @@ crop: [{'portion': 1, 'pos': 4}, {'portion': 1, 'pos': 4}]
 occlusion: [{'portion': 0, 'pos': 4}, {'portion': 0, 'pos': 4}]
 
 ## PDE environment parameters
-# d: {0: 0.05, 1: 0.05} 
-# mu: {0: [0.5, 0.75, 1, 0.6, 1.15, 1.375], 1: [0.5, 0.75, 1]}  # please, insert the common values first  
-# mu_test: [0.5, 1, 0.6, 1.15]
-# T: {0: 80, 1: 40}
-# T_test: 10
-# dt: 0.01
-# L: 20
-# n: {0: 32, 1: 100}  # grid size, should be the same as obs_dim_1 and obs_dim_2
-
-d: {0: 0.001, 1: 0.001}
-mu: {0: [1.5, 2.5, 3.5, 4.5], 1: [1.5, 2.5]}
-mu_test: [1.5, 2.5, 3.5]
-T: {0: 30, 1: 10}
-T_test: 5
-dt: 0.01
-L: 5
+d: {0: 0.05, 1: 0.05} 
+mu: {0: [0.5, 1, 1.375, 0.6, 0.75, 1.15], 1: [0.5, 1, 1.375]}  # please, insert the common values first  
+mu_test: [0.5, 1, 1.15]            ### [0.5, 1, 0.6, 1.15]
+T: {0: 50, 1: 20}                  ### {0: 80, 1: 40}
+T_test: 5                          ### 10
+dt: 0.005                          ### 0.01
+L: 20
 n: {0: 32, 1: 100}  # grid size, should be the same as obs_dim_1 and obs_dim_2
+
+# d: {0: 0.001, 1: 0.001}
+# mu: {0: [1.5, 2.5, 3.5, 4.5], 1: [1.5, 2.5]}
+# mu_test: [1.5, 2.5, 3.5]
+# T: {0: 30, 1: 10}
+# T_test: 5
+# dt: 0.01
+# L: 5
+# n: {0: 32, 1: 100}  # grid size, should be the same as obs_dim_1 and obs_dim_2
 
 # Training hyperparameters
 batch_size: 20
@@ -49,26 +49,22 @@ grid_size: 32
 
 # build model
 latent_dim: 20
-act_dim: 1
-state_dim: 3
 obs_dim_1: {0: 32, 1: 100}
 obs_dim_2: {0: 32, 1: 100}
 obs_dim_3: 6
 h_dim: 256
 
 # experiment and model type
-#training_dataset: {0: "reaction-diffusion/data_train_0.pkl", 1: "reaction-diffusion/data_train_1.pkl"}
-#testing_dataset: {0: "reaction-diffusion/data_test_0.pkl", 1: "reaction-diffusion/data_test_1.pkl"}
-training_dataset: {0: "diffusion-advection/data_train_0.pkl", 1: "diffusion-advection/data_train_1.pkl"}
-testing_dataset: {0: "diffusion-advection/data_test_0.pkl", 1: "diffusion-advection/data_test_1.pkl"}
+training_dataset: {0: "reaction-diffusion/data_train_0.pkl", 1: "reaction-diffusion/data_train_1.pkl"}
+testing_dataset: {0: "reaction-diffusion/data_test_0.pkl", 1: "reaction-diffusion/data_test_1.pkl"}
 log_interval: 50
 
 jitter: 1e-6
 
 # weights
-results_folder: "2024-07-03_16h-50m-08s"
-weights_filename: ["MFDKL_dyn_level0_32_2024-06-22_17h-49m-14s",
-                   "MFDKL_dyn_level1_100_2024-07-03_16h-57m-24s"]
-ID: 2
+results_folder: "2024-07-13_09h-56m-38s"
+weights_filename: ["MFDKL_dyn_level0_32_2024-07-13_09h-56m-40s",
+                   "MFDKL_dyn_level1_100_2024-07-16_18h-00m-26s"]
+ID: 1
 
 

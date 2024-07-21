@@ -263,24 +263,27 @@ def heatmap_to_image(u):
     return u
 
 
-def align_pde(len_0, len_1, n_cases_0, n_cases_1):
+def align_pde(len_0, len_1, mu0, mu1):
     """
     Compute indices to align the levels of fidelity in time.
 
     Args:
         len_0 (int): The length of observation of one episode at level of fidelity 0.
         len_1 (int): The length of observation of one episode at level of fidelity 1.
-        n_cases_0 (int): The number of episodes for level 0.
-        n_cases_1 (int): The number of episodes for level 1.
+        mu0 (list): The list of mu values for level 0.
+        mu1 (list): The list of mu values for level 1.
 
     Returns:
         numpy.ndarray: The indices to align the levels of fidelity in time.
     """
 
+    mu_positions = {mu_val: i for i, mu_val in enumerate(mu0)}
+
     idx = []
-    for i in range(n_cases_1):
+    for mu_val in mu1:
+        i = mu_positions[mu_val]
         start = i*len_0
-        new_idx = range(start, start+len_1-2)
+        new_idx = range(start, start+len_1)
         idx.append(new_idx)
 
     idx = np.array(idx).flatten()

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from sklearn.neighbors import NearestNeighbors
+import math
 
 
 def kNN(X, n_neighbors, n_jobs):
@@ -106,6 +107,6 @@ def estimate_ID(z_LF, z_next_LF, z_fwd_LF):
     
     print("ID_0=", ID_0, ", ID_1=", ID_1, ", ID_fwd=", ID_fwd)
     
-    ID = int(round((ID_0 + ID_1 + ID_fwd)/3))
+    ID = int(math.ceil((ID_0 + ID_1 + ID_fwd)/3))
 
     return ID

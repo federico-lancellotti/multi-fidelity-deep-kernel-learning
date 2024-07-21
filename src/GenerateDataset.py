@@ -454,11 +454,13 @@ class GeneratePDE(GenerateDataset):
         # Log the train data
         print("Logging the training data...")
         for level in range(self.levels):
+            print(f"\tLevel {level}...")
             self._log_level(level=level, u=u[level], test=False)
 
         # Log the test data
         print("Logging the test data...")
         for level in range(self.levels):
+            print(f"\tLevel {level}...")
             self._log_level(level=level, u=u[level], test=True)
         print("End.")
 
@@ -492,6 +494,7 @@ class GeneratePDE(GenerateDataset):
         
         time_range = int(T/self.dt)
         for mu in mu_list:
+            print(f"\tLogging for mu = {mu}")
             u_mu = u[mu]
             for t in range(start, start + time_range - 2):
                 terminated = True if t == time_range - 3 else False
