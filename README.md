@@ -73,7 +73,7 @@ You can then:
 
 ## `config.yaml` parameters
 ### General
-- `seed`, seed;
+- `seed`, seed.
 
 ### Dataset generation
 - `env_name`, environment name (available: Pendulum, Acrobot, MountainCarContinuous, reaction-diffusion, diffusion-advection);
@@ -82,7 +82,7 @@ You can then:
 - `num_episodes`, number of training episodes; dictionary with an int for each fidelity level;
 - `num_episodes_test`, number of testing episodes; dictionary with an int for each fidelity level;
 - `crop`, whether to crop the frames; list of dictionaries (one for each fidelity level), with keys "portion" and "pos";
-- `occlusion`, whether to mask the frames; list of dictionaries (one for each fidelity level), with keys "portion" and "pos";
+- `occlusion`, whether to mask the frames; list of dictionaries (one for each fidelity level), with keys "portion" and "pos".
 
 #### PDE
 - `d`, diffusion coefficients; dictionary with a double for each fidelity level;
@@ -92,9 +92,9 @@ You can then:
 - `T_test`: testing time horizon; int;
 - `dt`: step of time discretization, double;
 - `L`: spacial domain size; int;
-- `n`: grid size, should be the same as obs_dim_1 and obs_dim_2; dictionary with an in for each fidelity level;
+- `n`: grid size, should be the same as obs_dim_1 and obs_dim_2; dictionary with an in for each fidelity level.
 
-### Training hyperparameters
+### Model hyperparameters
 - `batch_size`: dimension of the training batch; int;
 - `max_epoch`: number of training epochs; int;
 - `rho`: $\rho$ coefficient, to weight the LF correction; double;
@@ -113,14 +113,14 @@ You can then:
 - `obs_dim_3`: third dimension of the observation; int (typically `=6`, since two RGB frames are concatenated along the color channel);
 - `h_dim`: dimension of the hidden layer; int;
 - `jitter`: jitter to cure numerical instabilities; double;
+- `log_interval`: interval for logging the trained weights; int;
 
-### Testing parameters
+### Datasets and weights
 - `training_dataset`: path in the `Results` folder where to find the training dataset files; dictionary with a string for each fidelity level;
 - `testing_dataset`: path in the `Results` folder where to find the testing dataset files; dictionary with a string for each fidelity level;
-- `log_interval`: interval for logging the trained weights; int;
 - `results_folder`: name of the folder where to look for the .pth weights files; string;
 - `weights_filename`: name of the weights file (without the .pth); list of strings, one for each fidelity level;
-- `ID`: estimated ID value; int;
+- `ID`: estimated ID value; int.
 
 
 ## References
