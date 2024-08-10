@@ -10,7 +10,7 @@ These instructions will help you run the code on you local machine. Please be aw
 A config.yaml file is available to set the main parameters.
 
 ### Requirements
-The code has been tested on Python 3.9.6 and 3.10.13.
+The code has been tested on Python 3.9.13.
 The required libraries are collected in the requirements.txt file:
 ```
 pip install -r requirements.txt
@@ -45,7 +45,7 @@ To initialize the model, you firstly need to instantiate a BuildModel object.
 You can 
 - add a level to the model with the method `add_level(level, latent_dim)`, by specifying the desired level of fidelity and the desired dimension of its latent space;
 - train the level with the method `train_level(level, model_n)`, by specifying the desired level of fidelity and passing the sub-model returned when adding the respective level;
-- evaluate the trained level with the method `get_latent_representations(model_n, train_loader_n)`, by passing the trained sub-model and its data loader. By evaluating the model, the latent representations of the pair of frames (t-1,t) and (t,t+1) and of the dynamics of the system will be returned.
+- evaluate the trained level with the method `get_latent_representations(model_n, train_loader_n)`, by passing the trained sub-model and its data loader. By evaluating the model, the latent representations of the pair of frames $(t-1,t)$ and $(t,t+1)$ and of the dynamics of the system will be returned.
 
 You can estimate the intrinsic dimension of the system with the function `estimate_ID(z_n, z_next_n, z_fwd_n)`, by passing the previously computed latent representations of the dynamical system.
 You can then use the estimated ID as the `latent_dim` of the next level of fidelity.
@@ -69,7 +69,7 @@ To test the model, you should firstly instantiate a BuildModel object, specifyin
 You can then:
 - add a level to the model with the method `add_level(level, latent_dim)`, by specifying the desired level of fidelity and the used dimension of its latent space;
 - test the level with the method `test_level(level, model_n)`, by specifying the desired level of fidelity and passing the sub-model returned when adding the respective level;
-- evaluate the trained level with the method `eval_level(model_n, train_loader_n)`, by passing the trained sub-model and its data loader. By evaluating the model, the latent representations of the pair of frames (t-1,t) and (t,t+1) and of the dynamics of the system will be returned.
+- evaluate the trained level with the method `eval_level(model_n, train_loader_n)`, by passing the trained sub-model and its data loader. By evaluating the model, the latent representations of the pair of frames $(t-1,t)$ and $(t,t+1)$ and of the dynamics of the system will be returned.
 
 ## `config.yaml` parameters
 ### General
