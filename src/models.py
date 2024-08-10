@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import gpytorch
 import math
 
-import traceback
 import warnings
 # Definisci il warning personalizzato
 class NumericalWarning(UserWarning):
