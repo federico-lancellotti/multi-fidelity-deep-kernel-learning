@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from src.utils import plot_latent_dims, align_pde, get_length, generate_gif, plot_error
+from src.utils import plot_latent_dims, plot_error
 from src.BuildModel import BuildModel
 
 def plot_reconstruction(real_frames, images, i, T_start, dt, mu, filepath):
@@ -132,7 +132,7 @@ def test():
     episodes = len(mu_test)
     L_test = int(T_test / dt - 2)
     T_start = args["T"][1]
-    N_iter = 200    # Number of iterations for the extrapolation (< L_test, for correct computation of the error)
+    N_iter = 10    # Number of iterations for the extrapolation (< L_test, for correct computation of the error)
 
     print("Testing the model...")
 

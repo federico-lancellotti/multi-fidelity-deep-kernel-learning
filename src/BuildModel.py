@@ -13,6 +13,7 @@ from .DataLoader import BaseDataLoader, GymDataLoader, PDEDataLoader
 
 import warnings
 warnings.filterwarnings("ignore", message="torch.sparse.SparseTensor")
+warnings.filterwarnings("ignore", category=UserWarning, message="TypedStorage is deprecated")
 
 
 class BuildModel:
@@ -125,7 +126,7 @@ class BuildModel:
         self.N = []
 
         for l in range(levels):
-            self.folder.append(os.path.join(self.directory + "/Data", self.dataset[l]))
+            self.folder.append(os.path.join(self.directory + "/Data/" + self.env_name, self.dataset[l]))
         
         for l in range(levels):
             self.data.append(load_pickle(self.folder[l]))
@@ -460,6 +461,7 @@ class BuildModel:
         Returns:
             tuple: A tuple containing the following elements:
                 - z (Tensor): The latent representation of the sample frames at time t-1 and t.
+                - var (Tensor): The variance of the latent representation of the sample frames at time t-1 and t.
                 - z_next (Tensor): The latent representation of the sample frames at time t and t+1.
                 - z_fwd (Tensor): The latent representation of the forward predicted samples, at time t and t+1.
                 - mu_x (Tensor): The mean of the observed samples, at time t-1 and t.
@@ -484,7 +486,7 @@ class BuildModel:
         pred_samples["z_fwd_LF"] = pred_samples["z_fwd_LF"].to(self.device)
 
         # Evaluate the model on the current batch
-        mu_x, _, _, _, z, _, mu_next, _, z_next, _, _, _, _, z_fwd, _ = model(
+        mu_x, _, _, var, z, _, mu_next, _, z_next, _, _, _, _, z_fwd, _ = model(
             pred_samples["obs"],
             pred_samples["z_LF"],
             pred_samples["next_obs"],
@@ -494,9 +496,10 @@ class BuildModel:
 
         # Detach the tensors
         z = z.detach()
+        var = var.detach()
         z_next = z_next.detach()
         z_fwd = z_fwd.detach()
         mu_x = mu_x.detach()
         mu_next = mu_next.detach()
 
-        return z, z_next, z_fwd, mu_x, mu_next
+        return z, var, z_next, z_fwd, mu_x, mu_next

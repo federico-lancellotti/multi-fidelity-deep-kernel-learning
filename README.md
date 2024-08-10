@@ -38,9 +38,9 @@ More info on this can be found in the documentation of the GenerateDataset class
 Two pickle files for each level of fidelity are eventually produced, one for training and the other for testing purposes, inside the `Data` folder.
 
 ## Train the model
-The model can be initialized and trained by running the `main.py` file. Here you can also set `use_gpu = True` if you want to use your CUDA compatible GPU.
+The model can be initialized and trained by running the `main-gym.py` or `main-pde.py` file. Here you can also set `use_gpu = True` if you want to use your CUDA compatible GPU.
 
-If you prefer to customize your training script, you can follow the follwing instructions.
+If you prefer to customize your training script, you can follow the following instructions.
 To initialize the model, you firstly need to instantiate a BuildModel object.
 You can 
 - add a level to the model with the method `add_level(level, latent_dim)`, by specifying the desired level of fidelity and the desired dimension of its latent space;
@@ -54,17 +54,17 @@ The weights of the trained model will be saved in the folder `Results/NameOfEnv/
 By default, an `ID.txt` file is produced and saved inside the same folder. It contains the estimate of the intrinsic dimension of the system computed until the second to last fidelity level, namely the dimension of the latent space of the level of highest fidelity.
 
 ## Test the model
-The trained model can be tested by running the `test.py` file. 
+The trained model can be tested by running the `test-gym.py` or `test-pde.py` file. 
 
 Please, make sure you are correctly specifying the `results_folder, weights_filename, ID` parameters inside the `config.yaml` file. 
 
-By default, the `test.py` file produces:
-- (if Gym env) the plots of the true state variables, saved during the generation of the dataset;
-- the plots of the latent variables of the level of highest fidelity;
-- a tuple of four figures, for each tested time instant; each tuple includes: the reconstructed frame, its absolute error, the one-step forward predicted frame, its absolute error.
+By default, the `test-gym.py`,`test-pde.py` files produce:
+- the plots of the latent variables of the level of highest fidelity, with uncertainty bands;
+- a tuple of four figures, for each tested time instant; each tuple includes: the reconstructed frame, its absolute error, the one-step forward predicted frame, its absolute error;
+- a tuple of two figures, for each extrapolated time instant; each tuple includes: the extrapolated frame and its absolute error.
 The plots can be found inside the folder `Results/NameOfEnv/%Y-%m-%d_%H-%M-%S/plots`.
 
-If you prefer to customize your training script, you can follow the follwing instructions.
+If you prefer to customize your training script, you can follow the following instructions.
 To test the model, you should firstly instantiate a BuildModel object, specifying the `test=True` argument. 
 You can then:
 - add a level to the model with the method `add_level(level, latent_dim)`, by specifying the desired level of fidelity and the used dimension of its latent space;

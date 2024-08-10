@@ -130,6 +130,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+dkl-test/
 
 # Spyder project settings
 .spyderproject
@@ -167,26 +168,15 @@ cython_debug/
 
 # Datasets
 Data/
+Data-old/
 videos/
 
 # Results
 Results/
+Results-old/
 
 # Visual Studio Code
 .vscode/
 
 # Docs
 docs/
-
-# Test files
-prova.py
-prova1.py
-prova2.py
-load_pde_data.py
-config-single.yaml
-config-double.yaml
-config-old.yaml
-main-four-fid.py
-main-single-fid.py
-test-double.py
-test-single.py

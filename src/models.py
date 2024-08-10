@@ -4,6 +4,15 @@ import torch.nn.functional as F
 import gpytorch
 import math
 
+import traceback
+import warnings
+# Definisci il warning personalizzato
+class NumericalWarning(UserWarning):
+    pass
+
+# Trasforma i warning in eccezioni
+warnings.filterwarnings('error', category=NumericalWarning)
+
 
 OUT_DIM = {128: 57, 100: 43, 84: 35, 64: 25, 42: 14, 32: 9, 24: 5}
 
@@ -89,13 +98,6 @@ class Encoder(nn.Module):
         return self.encoder(x)
 
 
-# The decoder is composed of a linear fully-connected layer and 4 transpose
-# convolutional layers with 32 filters each. The convolutional filters are of
-# size (3 × 3) and shifted across the images with stride 1 (again, the last
-# convolutional layer has stride 2). Batch normalization is used after the
-# 2nd and 4th convolutional layers, and ELU activations are employed for all
-# the layers except the last one.
-# The outputs are the mean μ_xhat_t and variance sigma2_xhat_t of N(mu_xhat_t, sigma2_xhat_t).
 class Decoder(nn.Module):
     """
     Decoder module for generating output from latent space.
@@ -333,12 +335,12 @@ class SVDKL_AE(gpytorch.Module):
             res = self.gp_layer(features)
 
         mean = res.mean
-        covar = res.variance
+        var = res.variance
         z = self.likelihood(res).rsample()
 
         mu_hat, var_hat = self.decoder.decoder(z)
 
-        return mu_hat, var_hat, res, mean, covar, z
+        return mu_hat, var_hat, res, mean, var, z
 
     
 class SVDKL_AE_latent_dyn(nn.Module):
@@ -468,7 +470,7 @@ class SVDKL_AE_latent_dyn(nn.Module):
                 - mu_x_rec (torch.Tensor): Mean of the reconstructed input data from the forward model.
                 - z_fwd (torch.Tensor): Latent space representation for the forward model.
                 - mu_fwd (torch.Tensor): Mean of the latent space representation for the forward model.
-                - res_fwd (torch.Tensor): Residuals for the forward model.
+                - res_fwd (torch.Tensor): The output distribution of the forward model.
         """
 
         res_fwd, mu_fwd, var_fwd, z_fwd = self.fwd_model_DKL(mu, z_fwd_LF)
