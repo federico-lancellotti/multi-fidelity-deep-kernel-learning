@@ -4,7 +4,6 @@ import yaml
 
 from src.intrinsic_dimension import estimate_ID
 from src.BuildModel import BuildModel
-from src.utils import align_pde, get_length
 
 
 # for 84x84 inputs
@@ -39,14 +38,7 @@ def main():
     MF_DKL = BuildModel(args, use_gpu=use_gpu)
     N = MF_DKL.N
 
-    # Compute indices to align the levels of fidelity in time
-    T = args['T']
-    dt = args['dt']
-    mu = args['mu']
-
-    len_0 = int(T[0]/dt) - 2
-    len_1 = int(T[1]/dt) - 2
-    idx = align_pde(len_0=len_0, len_1=len_1, mu0=mu[0], mu1=mu[1])
+    idx = range(N[1])
 
 
     # LEVEL OF FIDELITY: 0
