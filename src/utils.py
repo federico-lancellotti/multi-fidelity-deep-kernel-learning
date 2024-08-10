@@ -157,7 +157,7 @@ def plot_frame(frame, show=False, filename="", pause=0):
     Parameters:
         - frame: The frame (image) to be plotted.
         - show (optional): If True, display the plotted frame on the screen. Default is False.
-        - filename (optional): If provided, save the plotted frame to a file with the given filename. Default is an empty string.
+        - filename (optional): If provided, save the plotted frame to a .svg file with the given filename. Default is an empty string.
         - pause (optional): The time to pause before closing the plot. Default is 0.
         
     Returns:
@@ -165,11 +165,13 @@ def plot_frame(frame, show=False, filename="", pause=0):
     """
 
     plt.imshow(frame)
-    plt.axis("off")  # hide the axis
+    plt.axis("on")  # hide the axis
+    plt.xticks([])
+    plt.yticks([])
 
     # Save the image locally
     if filename:
-        filename = filename + ".png"
+        filename = filename + ".svg"
         plt.savefig(filename)
 
     # Print to screen
@@ -180,18 +182,21 @@ def plot_frame(frame, show=False, filename="", pause=0):
             plt.show()
 
 
-def plot_latent_dims(z, T, dt, dims=3, episodes=3, show=False, filename=""):
+def plot_latent_dims(z, var, T_start, T, dt, dims=3, episodes=3, show=False, filename=None):
     """
-    Plot the latent dimensions of the given data, as functions of time.
+    Plot the latent dimensions of the given data, as functions of time, 
+    with two standard deviation upper and lower bounds, for uncertainty quantification.
 
     Args:
         z (numpy.ndarray): The input data with shape (N, D), where N is the number of samples and D is the number of dimensions.
+        var (numpy.ndarray): The variance of the latent dimensions.
+        T_start (int): The starting time.
         T (int): The length of each episode.
         dt (float): The time step.
         dims (int, optional): The number of latent dimensions to plot. Defaults to 3.
         episodes (int, optional): The number of episodes to plot. Defaults to 3.
         show (bool, optional): Whether to display the plot. Defaults to False.
-        filename (str, optional): The filename to save the plot. Defaults to "".
+        filename (str, optional): The filename to save the plot, as .svg file. Defaults to None.
 
     Returns:
         None
@@ -199,19 +204,26 @@ def plot_latent_dims(z, T, dt, dims=3, episodes=3, show=False, filename=""):
     # Loop over each latent dimension
     for i in range(dims):
         theta_i = z[:,i] # extract the current dimension (state variable) theta_i
+        var_i = var[:,i]
         plt.figure(figsize=(15, 5))
 
         # Loop over each episode
         episodes = min(episodes, int(len(theta_i)/T))
-        time = np.arange(T)*dt
+        time = T_start + np.arange(T)*dt
         for j in range(episodes):
             pos = j*T
             l = T
             plt.plot(time, theta_i[pos:pos+l], linewidth=1.5, alpha=0.7)
 
+            # Plot the variance
+            upper_bound = theta_i[pos:pos+l] + 2 * np.sqrt(var_i[pos:pos+l])
+            lower_bound = theta_i[pos:pos+l] - 2 * np.sqrt(var_i[pos:pos+l])
+            plt.fill_between(time, lower_bound, upper_bound, color='gray', alpha=0.3, label='2σ Band')
+
+
         plt.xlabel('t')
-        plt.ylabel('theta_' + str(i+1))
-        plt.title('Latent dimension ' + str(i+1) + '-th')
+        plt.ylabel(r"$\theta_{" + str(i+1) + r"}$")
+        plt.title('Latent dimension ' + str(i+1))
         plt.grid(True)
 
         # Save the image locally
@@ -319,7 +331,7 @@ def generate_gif(filepath, start, end, step=1, filename="movie.gif"):
     Generate a gif from a sequence of images.
 
     Args:
-        filepath (str): The path to the images.
+        filepath (str): The path to the images. Warning: .png files are expected.
         start (int): The starting index of the images.
         end (int): The ending index of the images.
         filename (str, optional): The name of the gif file. Defaults to "movie.gif".
@@ -353,7 +365,7 @@ def plot_error(error, T_start, dt, labels, filepath):
         None
     """
 
-    time = np.arange(T_start, T_start + len(error[0])) * dt
+    time = T_start + np.arange(len(error[0])) * dt
 
     for i in range(len(error)):
         plt.plot(time, error[i], label=labels[i])
