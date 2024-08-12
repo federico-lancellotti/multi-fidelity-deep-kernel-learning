@@ -2,10 +2,10 @@
 seed: 1
 
 # Dataset generator
-env_name: "reaction-diffusion"  # Available: Pendulum, Acrobot, MountainCarContinuous, reaction-diffusion, diffusion-advection
+env_name: "MountainCarContinuous"  # Available: Pendulum, Acrobot, MountainCarContinuous, reaction-diffusion, diffusion-advection
 
 ## Gym environment parameters
-num_episodes: {0: 5, 1: 3}
+num_episodes: {0: 150, 1: 50}
 num_episodes_test: {0: 3, 1: 3}
 crop: [{'portion': 1, 'pos': 4}, {'portion': 1, 'pos': 4}]
 occlusion: [{'portion': 0, 'pos': 4}, {'portion': 0, 'pos': 4}]
@@ -20,8 +20,18 @@ dt: 0.1
 L: 20
 n: {0: 32, 1: 100}  # grid size, should be the same as obs_dim_1 and obs_dim_2
 
+# d: {0: 0.001, 1: 0.001}
+# mu: {0: [1.5, 2.5, 3.5, 4.5], 1: [1.5, 2.5]}
+# mu_test: [1.5, 2.5, 3.5]
+# T: {0: 30, 1: 10}
+# T_test: 5
+# dt: 0.01
+# L: 5
+# n: {0: 32, 1: 100}  # grid size, should be the same as obs_dim_1 and obs_dim_2
+
+
 # Training hyperparameters
-batch_size: 100
+batch_size: 20
 max_epoch: 1
 
 rho: 1 
@@ -40,8 +50,8 @@ grid_size: 32
 
 # build model
 latent_dim: 20
-obs_dim_1: {0: 32, 1: 100}
-obs_dim_2: {0: 32, 1: 100}
+obs_dim_1: {0: 32, 1: 84}
+obs_dim_2: {0: 32, 1: 84}
 obs_dim_3: 6
 h_dim: 256
 
