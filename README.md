@@ -9,6 +9,8 @@ The latent representation of the system and its dynamics is used to estimate the
 These instructions will help you run the code on you local machine. Please be aware that the usage of a GPU is strongly advised, especially for the training stage. Currently, only CUDA is supported for GPU-based training.
 A config.yaml file is available to set the main parameters.
 
+If you desire to try things out only, possibly on CPU, I suggest generating small (training) datasets and reducing the number of epochs.
+
 ### Requirements
 The code has been tested on Python 3.9.13.
 The required libraries are collected in the requirements.txt file:
